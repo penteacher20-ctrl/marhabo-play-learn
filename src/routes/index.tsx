@@ -47,7 +47,9 @@ function Index() {
 
           <div className="order-1 md:order-2 relative flex justify-center">
             <div className="absolute inset-0 rounded-full blur-3xl opacity-50" style={{ background: "var(--gradient-primary)" }} />
-            <img src={mascot} alt="Marhabo Fox Mascot" className="relative w-72 md:w-[420px] float-anim drop-shadow-2xl" style={{ transform: lang === "ar" ? "scaleX(-1)" : undefined }} />
+            <div className="relative w-72 md:w-[420px] float-anim">
+              <img src={mascot} alt="Marhabo Fox Mascot" className="w-full drop-shadow-2xl mascot-flip" style={{ transform: lang === "ar" ? "scaleX(-1)" : "scaleX(1)" }} />
+            </div>
             <span className="absolute top-8 -left-4 md:left-0 px-4 py-2 rounded-2xl bg-cyan-fun text-foreground font-extrabold text-lg shadow-lg wiggle">مرحبا!</span>
             <span className="absolute bottom-16 -right-2 px-3 py-2 rounded-full bg-green-fun text-foreground font-extrabold shadow-lg float-anim-slow">+55 ⭐</span>
           </div>
