@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -12,8 +12,13 @@ const COLORS = ["var(--coral)", "var(--purple-fun)", "var(--cyan-fun)", "var(--g
 
 function TemplatesPage() {
   const { tr, lang } = useI18n();
+  const location = useLocation();
   const [templates, setTemplates] = useState<Tpl[]>([]);
   useEffect(() => { supabase.from("templates").select("*").order("sort_order").then(({ data }) => setTemplates((data as Tpl[]) ?? [])); }, []);
+
+  if (location.pathname !== "/templates") {
+    return <Outlet />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--gradient-hero)" }}>
