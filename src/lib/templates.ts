@@ -176,7 +176,7 @@ export function generatePuzzle(c: PuzzleConfig): string {
     .pz-side .progress{font-size:.85rem;color:#666;font-weight:700}
     .pz-side .bar{width:100%;height:8px;background:#eee;border-radius:99px;overflow:hidden}
     .pz-side .bar>i{display:block;height:100%;width:0;background:linear-gradient(90deg,#9A73E8,#6D5BFF);transition:width .3s}
-    .pp{cursor:grab;user-select:none;-webkit-user-drag:none;touch-action:none;filter:drop-shadow(0 3px 4px rgba(0,0,0,.25));transition:transform .1s}
+    .pp{cursor:grab;user-select:none;-webkit-user-drag:none;touch-action:none;filter:drop-shadow(0 2px 0 rgba(0,0,0,.5)) drop-shadow(0 4px 6px rgba(0,0,0,.25));transition:transform .1s}
     .pp:active{cursor:grabbing;transform:scale(1.05)}
     .pp.placed{cursor:default;filter:none;pointer-events:none}
     .pz-result{font-size:1.4rem;font-weight:900;color:#7a4fd6;text-align:center;min-height:1.5em}
