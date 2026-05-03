@@ -206,7 +206,16 @@ export function generateColoring(c: ColoringConfig): string {
   return baseHead(c.title) + `
   <h1>${escapeHtml(c.title)}</h1>
   <p style="margin-bottom:14px;color:#666">اختر أداة ولون ثم لوّن الصورة (دلو للملء، فرشاة للرسم، ممحاة للمسح)</p>
-  <canvas id="cv" style="background:#fff;border-radius:20px;box-shadow:inset 0 0 0 3px #F0F2F8;cursor:crosshair;max-width:100%;touch-action:none"></canvas>
+  <div id="stage" style="position:relative;width:100%;max-width:640px;height:min(70vh,520px);overflow:hidden;border-radius:20px;background:#fff;box-shadow:inset 0 0 0 3px #F0F2F8;touch-action:none;-webkit-user-select:none;user-select:none">
+    <div id="zoom" style="position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform">
+      <canvas id="cv" style="display:block;cursor:crosshair;touch-action:none"></canvas>
+    </div>
+    <div style="position:absolute;left:8px;bottom:8px;display:flex;gap:6px;z-index:2">
+      <button class="btn" id="zin" style="padding:6px 10px;font-size:.9rem">➕</button>
+      <button class="btn" id="zout" style="padding:6px 10px;font-size:.9rem;background:#bbb">➖</button>
+      <button class="btn" id="zfit" style="padding:6px 10px;font-size:.9rem;background:#666">⤢</button>
+    </div>
+  </div>
   <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:center;max-width:640px">
     <div id="tools" style="display:flex;gap:6px"></div>
     <span id="palette" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center"></span>
