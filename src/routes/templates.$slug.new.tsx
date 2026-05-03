@@ -74,6 +74,14 @@ function NewFromTemplate() {
       if (items.length < 2) { toast.error("أضف عنصرين على الأقل"); return null; }
       return generateWheel({ title, items });
     }
+    if (slug === "puzzle") {
+      const words = puzzleWords.map(w => w.trim()).filter(w => w.length >= 2);
+      if (!words.length) { toast.error("أضف كلمة واحدة على الأقل (حرفان فأكثر)"); return null; }
+      return generatePuzzle({ title, words });
+    }
+    if (slug === "draw") {
+      return generateDraw({ title, prompt: drawPrompt.trim() || undefined });
+    }
     return null;
   };
 
