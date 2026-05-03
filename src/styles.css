@@ -130,6 +130,14 @@
   .mascot-flip { transition: transform 0.7s cubic-bezier(0.68, -0.55, 0.265, 1.55); transform-origin: center; will-change: transform; }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .mascot-flip { transition: transform 0.001s linear !important; }
+  .float-anim, .float-anim-slow, .wiggle { animation: none !important; }
+}
+
+@layer utilities {
+}
+
 @keyframes float {
   0%,100% { transform: translateY(0) rotate(0); }
   50% { transform: translateY(-14px) rotate(2deg); }
