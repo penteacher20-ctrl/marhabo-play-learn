@@ -2,7 +2,6 @@ import { Outlet, createRootRoute, HeadContent, Scripts } from "@tanstack/react-r
 import appCss from "../styles.css?url";
 import { I18nProvider } from "@/lib/i18n";
 import { AuthProvider } from "@/lib/auth";
-import { MotionProvider } from "@/lib/motion";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -24,9 +23,14 @@ export const Route = createRootRoute({
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "مِرحابو — التعلّم بقى لعبة!" },
       { name: "description", content: "منصة ألعاب تعليمية تفاعلية للأطفال من 4 إلى 12 سنة. اختر قالب، أضف محتواك، شارك مع طلابك." },
-      { property: "og:title", content: "مِرحابو — Marhabo" },
-      { property: "og:description", content: "Fun learning adventures for kids aged 4–12." },
+      { property: "og:title", content: "مِرحابو — التعلّم بقى لعبة!" },
+      { property: "og:description", content: "منصة ألعاب تعليمية تفاعلية للأطفال من 4 إلى 12 سنة. اختر قالب، أضف محتواك، شارك مع طلابك." },
       { property: "og:type", content: "website" },
+      { name: "twitter:title", content: "مِرحابو — التعلّم بقى لعبة!" },
+      { name: "twitter:description", content: "منصة ألعاب تعليمية تفاعلية للأطفال من 4 إلى 12 سنة. اختر قالب، أضف محتواك، شارك مع طلابك." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/534ced98-06ae-4340-80ee-a2a9d95a3eca/id-preview-8d66dfe4--870a3bed-844c-48d7-a718-2f70f0704bd5.lovable.app-1777832074346.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/534ced98-06ae-4340-80ee-a2a9d95a3eca/id-preview-8d66dfe4--870a3bed-844c-48d7-a718-2f70f0704bd5.lovable.app-1777832074346.png" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -53,10 +57,8 @@ function RootComponent() {
   return (
     <AuthProvider>
       <I18nProvider>
-        <MotionProvider>
-          <Outlet />
-          <Toaster position="top-center" richColors />
-        </MotionProvider>
+        <Outlet />
+        <Toaster position="top-center" richColors />
       </I18nProvider>
     </AuthProvider>
   );
