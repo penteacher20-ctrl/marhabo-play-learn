@@ -26,6 +26,8 @@ function NewFromTemplate() {
   const [blanksList, setBlanksList] = useState<{ text: string; answers: string[] }[]>([{ text: "عاصمة مصر هي ___ .", answers: ["القاهرة"] }]);
   const [pairs, setPairs] = useState<{ a: string; b: string }[]>([{ a: "", b: "" }, { a: "", b: "" }]);
   const [wheelItems, setWheelItems] = useState<string[]>(["", "", ""]);
+  const [puzzleWords, setPuzzleWords] = useState<string[]>(["", ""]);
+  const [drawPrompt, setDrawPrompt] = useState("");
 
   if (!user) {
     return (
