@@ -6,8 +6,15 @@ import { Footer } from "@/components/Footer";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
+import { generatePuzzle } from "@/lib/templates";
 
 export const Route = createFileRoute("/games/$gameId/edit")({ component: EditGame });
+
+function extractPuzzleMeta(html: string): { src: string | null; grid: number } {
+  const s = html.match(/const\s+SRC\s*=\s*("([^"]+)"|'([^']+)')/);
+  const g = html.match(/let\s+ROWS\s*=\s*(\d+)/);
+  return { src: s ? (s[2] ?? s[3] ?? null) : null, grid: g ? parseInt(g[1], 10) : 4 };
+}
 
 function EditGame() {
   const { gameId } = Route.useParams();
@@ -21,19 +28,47 @@ function EditGame() {
   const [newThumb, setNewThumb] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [gameType, setGameType] = useState<string>("");
+  const [fileUrl, setFileUrl] = useState<string | null>(null);
+  // Puzzle-specific
+  const [puzzleImageUrl, setPuzzleImageUrl] = useState<string | null>(null);
+  const [puzzleGrid, setPuzzleGrid] = useState<number>(4);
+  const [newPuzzleImage, setNewPuzzleImage] = useState<File | null>(null);
+
+  const isPuzzle = gameType.startsWith("template:puzzle");
 
   useEffect(() => {
     if (!loading && !user) { navigate({ to: "/auth" }); return; }
     if (!user) return;
-    supabase.from("games").select("*").eq("id", gameId).maybeSingle().then(({ data }) => {
+    supabase.from("games").select("*").eq("id", gameId).maybeSingle().then(async ({ data }) => {
       if (!data) { setNotFound(true); return; }
       if ((data as any).user_id !== user.id) { setNotFound(true); return; }
-      setTitle((data as any).title);
-      setDesc((data as any).description ?? "");
-      setIsPublic((data as any).is_public);
-      setThumbUrl((data as any).thumbnail_url);
+      const g = data as any;
+      setTitle(g.title);
+      setDesc(g.description ?? "");
+      setIsPublic(g.is_public);
+      setThumbUrl(g.thumbnail_url);
+      setGameType(g.type ?? "");
+      setFileUrl(g.file_url ?? null);
+      if ((g.type ?? "").startsWith("template:puzzle") && g.file_url) {
+        try {
+          const res = await fetch(g.file_url);
+          const txt = await res.text();
+          const meta = extractPuzzleMeta(txt);
+          setPuzzleImageUrl(meta.src);
+          setPuzzleGrid(meta.grid);
+        } catch { /* ignore */ }
+      }
     });
   }, [gameId, user, loading, navigate]);
+
+  const uploadAsset = async (file: File): Promise<string> => {
+    const ext = file.name.split(".").pop() || "png";
+    const path = `${user!.id}/${Date.now()}-asset.${ext}`;
+    const { error } = await supabase.storage.from("game-files").upload(path, file, { contentType: file.type });
+    if (error) throw error;
+    return supabase.storage.from("game-files").getPublicUrl(path).data.publicUrl;
+  };
 
   const save = async () => {
     if (!user) return;
@@ -47,9 +82,27 @@ function EditGame() {
         if (error) throw error;
         thumbnail_url = supabase.storage.from("thumbnails").getPublicUrl(path).data.publicUrl;
       }
-      const { error } = await supabase.from("games").update({ title, description: desc, is_public: isPublic, thumbnail_url }).eq("id", gameId);
+
+      let file_url = fileUrl;
+      // Regenerate puzzle HTML if image changed, grid changed, or title changed (so iframe header matches)
+      if (isPuzzle) {
+        let imgUrl = puzzleImageUrl;
+        if (newPuzzleImage) {
+          imgUrl = await uploadAsset(newPuzzleImage);
+        }
+        if (!imgUrl) { toast.error("لا توجد صورة للبازل"); setBusy(false); return; }
+        const html = generatePuzzle({ title, imageUrl: imgUrl, rows: puzzleGrid, cols: puzzleGrid });
+        const path = `${user.id}/${Date.now()}-puzzle.html`;
+        const blob = new Blob([html], { type: "text/html" });
+        const { error: upErr } = await supabase.storage.from("game-files").upload(path, blob, { contentType: "text/html" });
+        if (upErr) throw upErr;
+        file_url = supabase.storage.from("game-files").getPublicUrl(path).data.publicUrl;
+        setPuzzleImageUrl(imgUrl);
+      }
+
+      const { error } = await supabase.from("games").update({ title, description: desc, is_public: isPublic, thumbnail_url, file_url }).eq("id", gameId);
       if (error) throw error;
-      toast.success("تم الحفظ ✅");
+      toast.success("تم الحفظ ✅ وستظهر التحديثات للطلاب فوراً");
       navigate({ to: "/dashboard" });
     } catch (err: any) { toast.error(err.message); } finally { setBusy(false); }
   };
@@ -75,6 +128,32 @@ function EditGame() {
             {thumbUrl && <img src={thumbUrl} alt="" className="w-32 h-20 object-cover rounded-xl mb-2" />}
             <input type="file" accept="image/*" onChange={(e) => setNewThumb(e.target.files?.[0] ?? null)} className="text-sm" />
           </Field>
+
+          {isPuzzle && (
+            <div className="rounded-2xl border-2 border-dashed border-primary/40 p-4 space-y-3 bg-primary/5">
+              <div className="font-bold text-primary">🧩 إعدادات البازل</div>
+              <Field label="صورة البازل الحالية">
+                {(newPuzzleImage || puzzleImageUrl) && (
+                  <img
+                    src={newPuzzleImage ? URL.createObjectURL(newPuzzleImage) : puzzleImageUrl!}
+                    alt="puzzle"
+                    className="w-40 h-40 object-cover rounded-xl mb-2 border-2 border-border"
+                  />
+                )}
+                <input type="file" accept="image/*" onChange={(e) => setNewPuzzleImage(e.target.files?.[0] ?? null)} className="text-sm" />
+                <p className="text-xs text-muted-foreground mt-1">عند الحفظ ستُولَّد القطع تلقائياً من الصورة الجديدة، وسيراها الطلاب فوراً.</p>
+              </Field>
+              <Field label={`صعوبة الشبكة الافتراضية: ${puzzleGrid}×${puzzleGrid}`}>
+                <input
+                  type="range" min={3} max={6} step={1}
+                  value={puzzleGrid}
+                  onChange={(e) => setPuzzleGrid(parseInt(e.target.value, 10))}
+                  className="w-full"
+                />
+              </Field>
+            </div>
+          )}
+
           <div className="flex items-center justify-between bg-secondary/50 rounded-2xl px-4 py-3">
             <span className="font-bold">{tr("privacy")}</span>
             <div className="flex gap-1 p-1 bg-background rounded-full">
@@ -91,19 +170,5 @@ function EditGame() {
       </div>
       <style>{`.input{width:100%;padding:.75rem 1rem;border-radius:1rem;background:#fff;border:2px solid var(--color-border);font:inherit;outline:none}.input:focus{border-color:var(--color-primary)}`}</style>
     </Wrapper>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <label className="block"><span className="block text-sm font-bold mb-1.5">{label}</span>{children}</label>;
-}
-
-function Wrapper({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="min-h-screen flex flex-col" style={{ background: "var(--gradient-hero)" }}>
-      <Navbar />
-      <main className="container mx-auto px-4 py-12 flex-1">{children}</main>
-      <Footer />
-    </div>
   );
 }
