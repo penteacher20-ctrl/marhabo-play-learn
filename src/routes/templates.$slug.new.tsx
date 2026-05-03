@@ -89,9 +89,19 @@ function NewFromTemplate() {
 
   const submit = async () => {
     if (!title.trim()) { toast.error("أضف عنوان اللعبة"); return; }
-    const html = buildHtml(); if (!html) return;
     setBusy(true);
     try {
+      let html = buildHtml();
+      if (slug === "puzzle") {
+        if (!puzzleImage) { toast.error("ارفع صورة للبازل"); setBusy(false); return; }
+        const url = await uploadAsset(puzzleImage);
+        html = generatePuzzle({ title, imageUrl: url, rows: puzzleGrid, cols: puzzleGrid });
+      } else if (slug === "draw") {
+        if (!colorImage) { toast.error("ارفع صورة للتلوين"); setBusy(false); return; }
+        const url = await uploadAsset(colorImage);
+        html = generateColoring({ title, imageUrl: url });
+      }
+      if (!html) { setBusy(false); return; }
       const ts = Date.now();
       const path = `${user.id}/${ts}-${slug}.html`;
       const blob = new Blob([html], { type: "text/html" });
