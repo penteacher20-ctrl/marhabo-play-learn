@@ -292,15 +292,19 @@ export function generateColoring(c: ColoringConfig): string {
     const sz=document.getElementById('size'), szV=document.getElementById('sizeV');
     sz.oninput=()=>{ size=+sz.value; szV.textContent=size; };
     const cv=document.getElementById('cv'),ctx=cv.getContext('2d',{willReadFrequently:true});
+    const bg=document.getElementById('bg'),bctx=bg.getContext('2d',{willReadFrequently:true});
+    const wrap=document.getElementById('canvasWrap');
     const stage=document.getElementById('stage'), zoomEl=document.getElementById('zoom');
     let scale=1, tx=0, ty=0;
     function applyXf(){ zoomEl.style.transform='translate('+tx+'px,'+ty+'px) scale('+scale+')'; }
     function fitToStage(){ const sw=stage.clientWidth, sh=stage.clientHeight; scale=Math.min(sw/cv.width, sh/cv.height); tx=(sw-cv.width*scale)/2; ty=(sh-cv.height*scale)/2; applyXf(); }
     const img=new Image(); img.crossOrigin='anonymous';
-    img.onload=()=>{ const max=1200; const r=Math.min(1,max/img.width,max/img.height); cv.width=img.width*r; cv.height=img.height*r; redraw(); pushHistory(); fitToStage(); };
-    img.onerror=()=>{ cv.width=1000;cv.height=700; ctx.fillStyle='#fff';ctx.fillRect(0,0,cv.width,cv.height); pushHistory(); fitToStage(); };
+    function setSize(w,h){ cv.width=bg.width=w; cv.height=bg.height=h; wrap.style.width=w+'px'; wrap.style.height=h+'px'; }
+    img.onload=()=>{ const max=1200; const r=Math.min(1,max/img.width,max/img.height); setSize(img.width*r, img.height*r); drawBg(); ctx.clearRect(0,0,cv.width,cv.height); pushHistory(); fitToStage(); };
+    img.onerror=()=>{ setSize(1000,700); drawBg(); ctx.clearRect(0,0,cv.width,cv.height); pushHistory(); fitToStage(); };
     img.src=SRC;
-    function redraw(){ ctx.clearRect(0,0,cv.width,cv.height); ctx.fillStyle='#fff'; ctx.fillRect(0,0,cv.width,cv.height); if(img.complete&&img.naturalWidth) ctx.drawImage(img,0,0,cv.width,cv.height); }
+    function drawBg(){ bctx.clearRect(0,0,bg.width,bg.height); bctx.fillStyle='#fff'; bctx.fillRect(0,0,bg.width,bg.height); if(img.complete&&img.naturalWidth) bctx.drawImage(img,0,0,bg.width,bg.height); }
+    function redraw(){ ctx.clearRect(0,0,cv.width,cv.height); }
     document.getElementById('zin').onclick=()=>{ zoomAt(stage.clientWidth/2,stage.clientHeight/2,1.25); };
     document.getElementById('zout').onclick=()=>{ zoomAt(stage.clientWidth/2,stage.clientHeight/2,1/1.25); };
     document.getElementById('zfit').onclick=fitToStage;
@@ -308,20 +312,25 @@ export function generateColoring(c: ColoringConfig): string {
     const history=[]; function pushHistory(){ try{ history.push(ctx.getImageData(0,0,cv.width,cv.height)); if(history.length>20)history.shift(); }catch(e){} }
     function hex(h){ if(h.length===4)h='#'+h[1]+h[1]+h[2]+h[2]+h[3]+h[3]; return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16),255]; }
     function fill(x,y,col){
-      const id=ctx.getImageData(0,0,cv.width,cv.height); const d=id.data; const W=cv.width,H=cv.height;
-      const i0=(y*W+x)*4; const sr=d[i0],sg=d[i0+1],sb=d[i0+2];
-      if(sr<60&&sg<60&&sb<60) return;
+      // Composite (bg + paint) to decide region; paint result onto overlay only
+      const W=cv.width,H=cv.height;
+      const bgData=bctx.getImageData(0,0,W,H).data;
+      const fgImg=ctx.getImageData(0,0,W,H); const fg=fgImg.data;
+      function sample(i){ const a=fg[i+3]/255; const ia=1-a; return [fg[i]*a+bgData[i]*ia, fg[i+1]*a+bgData[i+1]*ia, fg[i+2]*a+bgData[i+2]*ia]; }
+      const i0=(y*W+x)*4; const s=sample(i0); const sr=s[0],sg=s[1],sb=s[2];
+      if(sr<60&&sg<60&&sb<60) return; // don't fill dark outlines
       const tr=col[0],tg=col[1],tb=col[2];
-      if(Math.abs(sr-tr)+Math.abs(sg-tg)+Math.abs(sb-tb)<10) return;
       const stack=[[x,y]]; const tol=60;
+      const visited=new Uint8Array(W*H);
       while(stack.length){
         const [cx,cy]=stack.pop(); if(cx<0||cy<0||cx>=W||cy>=H) continue;
-        const i=(cy*W+cx)*4;
-        if(Math.abs(d[i]-sr)>tol||Math.abs(d[i+1]-sg)>tol||Math.abs(d[i+2]-sb)>tol) continue;
-        d[i]=tr;d[i+1]=tg;d[i+2]=tb;d[i+3]=255;
+        const p=cy*W+cx; if(visited[p]) continue; visited[p]=1;
+        const i=p*4; const cs=sample(i);
+        if(Math.abs(cs[0]-sr)>tol||Math.abs(cs[1]-sg)>tol||Math.abs(cs[2]-sb)>tol) continue;
+        fg[i]=tr;fg[i+1]=tg;fg[i+2]=tb;fg[i+3]=255;
         stack.push([cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]);
       }
-      ctx.putImageData(id,0,0);
+      ctx.putImageData(fgImg,0,0);
     }
     function pos(e){ const r=cv.getBoundingClientRect(); const sx=cv.width/r.width, sy=cv.height/r.height; return { x:(e.clientX-r.left)*sx, y:(e.clientY-r.top)*sy }; }
     function stagePos(e){ const r=stage.getBoundingClientRect(); return { x:e.clientX-r.left, y:e.clientY-r.top }; }
