@@ -8,7 +8,7 @@ import { generateColoring } from "@/lib/templates";
 
 export const Route = createFileRoute("/play/$gameId")({ component: PlayPage });
 
-interface Game { id: string; title: string; description: string | null; file_url: string | null; user_id: string; play_count: number; }
+interface Game { id: string; title: string; description: string | null; type: string; file_url: string | null; user_id: string; play_count: number; }
 
 type FitMode = "auto" | "fit" | "fill" | "stretch";
 
