@@ -278,7 +278,7 @@ export function generateColoring(c: ColoringConfig): string {
     const colors=['#FF6C67','#FF8FBF','#FFCC35','#FF8A1F','#8EE870','#2FB46B','#2FEAFF','#3B82F6','#9A73E8','#7B4F2A','#222','#fff'];
     let color=colors[0], tool='brush', size=10;
     const pal=document.getElementById('palette');
-    pal.innerHTML=colors.map((c,i)=>'<button data-c="'+c+'" aria-label="'+c+'" style="width:30px;height:30px;border-radius:50%;border:3px solid '+(i===0?'#222':'#fff')+';background:'+c+';cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.2);padding:0"></button>').join('');
+    pal.innerHTML=colors.map((c,i)=>'<button data-c="'+c+'" aria-label="'+c+'" style="border-color:'+(i===0?'#222':'#fff')+';background:'+c+'"></button>').join('');
     function selectColor(c){ color=c; document.getElementById('picker').value=/^#[0-9a-f]{6}$/i.test(c)?c:'#000000'; pal.querySelectorAll('button').forEach(x=>x.style.borderColor=x.dataset.c===c?'#222':'#fff'); }
     pal.querySelectorAll('button').forEach(b=>b.onclick=()=>selectColor(b.dataset.c));
     document.getElementById('picker').oninput=e=>{ selectColor(e.target.value); pal.querySelectorAll('button').forEach(x=>x.style.borderColor='#fff'); };
