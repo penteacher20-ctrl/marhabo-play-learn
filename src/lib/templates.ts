@@ -258,7 +258,7 @@ export function generateColoring(c: ColoringConfig): string {
     img.onload=()=>{ const max=1200; const r=Math.min(1,max/img.width,max/img.height); cv.width=img.width*r; cv.height=img.height*r; redraw(); pushHistory(); fitToStage(); };
     img.onerror=()=>{ cv.width=1000;cv.height=700; ctx.fillStyle='#fff';ctx.fillRect(0,0,cv.width,cv.height); pushHistory(); fitToStage(); };
     img.src=SRC;
-    window.addEventListener('resize',()=>{ /* keep current scale */ });
+    function redraw(){ ctx.clearRect(0,0,cv.width,cv.height); ctx.fillStyle='#fff'; ctx.fillRect(0,0,cv.width,cv.height); if(img.complete&&img.naturalWidth) ctx.drawImage(img,0,0,cv.width,cv.height); }
     document.getElementById('zin').onclick=()=>{ zoomAt(stage.clientWidth/2,stage.clientHeight/2,1.25); };
     document.getElementById('zout').onclick=()=>{ zoomAt(stage.clientWidth/2,stage.clientHeight/2,1/1.25); };
     document.getElementById('zfit').onclick=fitToStage;
