@@ -217,6 +217,10 @@ export function generateColoring(c: ColoringConfig): string {
       <input type="range" id="size" min="2" max="60" value="10" style="width:120px">
       <span id="sizeV" style="min-width:24px;display:inline-block">10</span>
     </label>
+    <label style="display:flex;align-items:center;gap:6px;font-weight:700;color:#555">تنعيم
+      <input type="range" id="smooth" min="0" max="90" value="55" style="width:100px">
+      <span id="smoothV" style="min-width:24px;display:inline-block">55</span>
+    </label>
     <button class="btn" id="undo" style="background:#666">↶ تراجع</button>
     <button class="btn" id="reset" style="background:#aaa">↺ إعادة</button>
     <button class="btn" id="save">💾 حفظ</button>
@@ -262,15 +266,33 @@ export function generateColoring(c: ColoringConfig): string {
     }
     function pos(e){ const r=cv.getBoundingClientRect(); const sx=cv.width/r.width, sy=cv.height/r.height; return { x:(e.clientX-r.left)*sx, y:(e.clientY-r.top)*sy }; }
     let drawing=false,lx=0,ly=0,activeId=null;
-    function stroke(x,y){ ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(x,y); ctx.stroke(); lx=x; ly=y; }
-    function down(e){ if(activeId!==null) return; if(e.pointerType==='touch'&&e.isPrimary===false) return; const p=pos(e); if(tool==='fill'){ fill(Math.floor(p.x),Math.floor(p.y),hex(color)); pushHistory(); return; } activeId=e.pointerId; try{ cv.setPointerCapture(e.pointerId); }catch(_){} drawing=true; lx=p.x; ly=p.y; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle=tool==='eraser'?'#ffffff':color; ctx.lineWidth=size; ctx.beginPath(); ctx.arc(lx,ly,size/2,0,Math.PI*2); ctx.fillStyle=ctx.strokeStyle; ctx.fill(); e.preventDefault(); }
-    function move(e){ if(!drawing||e.pointerId!==activeId) return; const evs=(e.getCoalescedEvents&&e.getCoalescedEvents().length)?e.getCoalescedEvents():[e]; for(const ev of evs){ const p=pos(ev); stroke(p.x,p.y); } e.preventDefault(); }
-    function up(e){ if(e&&e.pointerId!==activeId) return; if(drawing){ drawing=false; pushHistory(); } activeId=null; }
+    let sx0=0,sy0=0,smooth=0.55,pts=[];
+    const smI=document.getElementById('smooth'), smV=document.getElementById('smoothV');
+    smI.oninput=()=>{ smooth=+smI.value/100; smV.textContent=smI.value; };
+    function drawSegment(){ // quadratic curve through last 3 smoothed points
+      const n=pts.length; if(n<2) return;
+      ctx.beginPath();
+      if(n===2){ ctx.moveTo(pts[0].x,pts[0].y); ctx.lineTo(pts[1].x,pts[1].y); }
+      else { const a=pts[n-3],b=pts[n-2],c=pts[n-1]; const m1={x:(a.x+b.x)/2,y:(a.y+b.y)/2}, m2={x:(b.x+c.x)/2,y:(b.y+c.y)/2}; ctx.moveTo(m1.x,m1.y); ctx.quadraticCurveTo(b.x,b.y,m2.x,m2.y); }
+      ctx.stroke();
+    }
+    function addPoint(x,y){ // EMA filter then push
+      const a=1-smooth; sx0=sx0+(x-sx0)*a; sy0=sy0+(y-sy0)*a;
+      const last=pts[pts.length-1]; if(last && Math.hypot(sx0-last.x,sy0-last.y)<0.5) return;
+      pts.push({x:sx0,y:sy0}); drawSegment();
+    }
+    function down(e){ if(activeId!==null) return; if(e.pointerType==='touch'&&e.isPrimary===false) return; const p=pos(e); if(tool==='fill'){ fill(Math.floor(p.x),Math.floor(p.y),hex(color)); pushHistory(); return; } activeId=e.pointerId; try{ cv.setPointerCapture(e.pointerId); }catch(_){} drawing=true; sx0=p.x; sy0=p.y; pts=[{x:p.x,y:p.y}]; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle=tool==='eraser'?'#ffffff':color; ctx.lineWidth=size; ctx.beginPath(); ctx.arc(p.x,p.y,size/2,0,Math.PI*2); ctx.fillStyle=ctx.strokeStyle; ctx.fill(); e.preventDefault(); }
+    function move(e){ if(!drawing||e.pointerId!==activeId) return; const evs=(e.getCoalescedEvents&&e.getCoalescedEvents().length)?e.getCoalescedEvents():[e]; for(const ev of evs){ const p=pos(ev); addPoint(p.x,p.y); } e.preventDefault(); }
+    function up(e){ if(e&&e.pointerId!==activeId) return; if(drawing){ // finalize tail
+        if(pts.length>=2){ const a=pts[pts.length-2],b=pts[pts.length-1]; ctx.beginPath(); const m={x:(a.x+b.x)/2,y:(a.y+b.y)/2}; ctx.moveTo(m.x,m.y); ctx.quadraticCurveTo(b.x,b.y,b.x,b.y); ctx.stroke(); }
+        drawing=false; pts=[]; pushHistory();
+      } activeId=null; }
     cv.style.touchAction='none';
     cv.addEventListener('pointerdown',down);
     cv.addEventListener('pointermove',move);
     cv.addEventListener('pointerup',up);
     cv.addEventListener('pointercancel',up);
+
     cv.addEventListener('pointerleave',e=>{ if(drawing&&e.pointerId===activeId){ /* keep drawing via capture */ } });
 
     document.getElementById('undo').onclick=()=>{ if(history.length>1){ history.pop(); const last=history[history.length-1]; ctx.putImageData(last,0,0); } };
