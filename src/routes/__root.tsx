@@ -53,8 +53,10 @@ function RootComponent() {
   return (
     <AuthProvider>
       <I18nProvider>
-        <Outlet />
-        <Toaster position="top-center" richColors />
+        <MotionProvider>
+          <Outlet />
+          <Toaster position="top-center" richColors />
+        </MotionProvider>
       </I18nProvider>
     </AuthProvider>
   );
