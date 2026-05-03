@@ -44,31 +44,27 @@ function PlayPage() {
   if (!game) return <div className="min-h-screen grid place-items-center">جاري التحميل...</div>;
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "var(--gradient-hero)" }}>
+    <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
-      <div className="container mx-auto px-4 py-6 flex-1 flex flex-col">
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-display font-extrabold">{game.title}</h1>
-            {creator && <p className="text-sm text-muted-foreground">بواسطة {creator}</p>}
-          </div>
-          <div className="flex gap-2">
-            <button onClick={() => copy(shareUrl)} className="bubble-btn !py-2 !px-5 text-sm text-white" style={{ background: "var(--gradient-fresh)" }}>🔗 {tr("share_link")}</button>
-            <button onClick={() => setShowEmbed(!showEmbed)} className="bubble-btn !py-2 !px-5 text-sm text-foreground" style={{ background: "var(--yellow-fun)" }}>📋 {tr("embed_code")}</button>
-          </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-b border-border bg-background/80 backdrop-blur">
+        <div className="min-w-0">
+          <h1 className="text-base md:text-lg font-display font-extrabold truncate">{game.title}</h1>
+          {creator && <p className="text-xs text-muted-foreground truncate">بواسطة {creator}</p>}
         </div>
-        {showEmbed && (
-          <div className="card-pop p-4 mb-4">
-            <pre onClick={() => copy(embed)} className="cursor-pointer text-xs bg-secondary/60 rounded-xl p-3 overflow-x-auto">{embed}</pre>
-          </div>
-        )}
-        <div className="card-pop flex-1 overflow-hidden p-2">
-          {html ? (
-            <iframe srcDoc={html} title={game.title} className="w-full h-full min-h-[70vh] rounded-2xl border-0" sandbox="allow-scripts allow-same-origin allow-downloads" allowFullScreen />
-          ) : game.file_url ? (
-            <div className="grid place-items-center h-96 text-muted-foreground">جاري تحميل اللعبة...</div>
-          ) : <div className="grid place-items-center h-96 text-muted-foreground">لا يوجد ملف</div>}
+        <div className="flex gap-2">
+          <button onClick={() => copy(shareUrl)} className="bubble-btn !py-1.5 !px-4 text-xs text-white" style={{ background: "var(--gradient-fresh)" }}>🔗 {tr("share_link")}</button>
+          <button onClick={() => setShowEmbed(!showEmbed)} className="bubble-btn !py-1.5 !px-4 text-xs text-foreground" style={{ background: "var(--yellow-fun)" }}>📋 {tr("embed_code")}</button>
         </div>
+      </div>
+      {showEmbed && (
+        <pre onClick={() => copy(embed)} className="cursor-pointer text-xs bg-secondary/60 px-3 py-2 overflow-x-auto">{embed}</pre>
+      )}
+      <div className="flex-1 min-h-0">
+        {html ? (
+          <iframe srcDoc={html} title={game.title} className="w-full h-full block border-0" style={{ minHeight: "calc(100vh - 110px)" }} sandbox="allow-scripts allow-same-origin allow-downloads" allowFullScreen />
+        ) : game.file_url ? (
+          <div className="grid place-items-center h-96 text-muted-foreground">جاري تحميل اللعبة...</div>
+        ) : <div className="grid place-items-center h-96 text-muted-foreground">لا يوجد ملف</div>}
       </div>
     </div>
   );
