@@ -41,7 +41,8 @@ function EditGame() {
     try {
       let thumbnail_url = thumbUrl;
       if (newThumb) {
-        const path = `${user.id}/${Date.now()}-${newThumb.name}`;
+        const safeName = newThumb.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const path = `${user.id}/${Date.now()}-${safeName}`;
         const { error } = await supabase.storage.from("thumbnails").upload(path, newThumb);
         if (error) throw error;
         thumbnail_url = supabase.storage.from("thumbnails").getPublicUrl(path).data.publicUrl;
