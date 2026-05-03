@@ -152,51 +152,172 @@ export function generateWheel(c: WheelConfig): string {
 export interface PuzzleConfig { title: string; imageUrl: string; rows: number; cols: number; }
 export function generatePuzzle(c: PuzzleConfig): string {
   return baseHead(c.title) + `
+  <style>
+    .puzzle-wrap{display:flex;flex-wrap:wrap;gap:18px;justify-content:center;align-items:flex-start}
+    .puzzle-side{display:flex;flex-direction:column;align-items:center;gap:8px}
+    .puzzle-side .ref{width:160px;height:160px;border-radius:14px;background:#fff;border:3px solid #9A73E8;box-shadow:0 6px 16px rgba(154,115,232,.25);object-fit:cover}
+    .puzzle-side .ref-label{font-size:.8rem;color:#9A73E8;font-weight:800}
+    .puzzle-stage{position:relative;background:#F0F2F8;border-radius:20px;border:3px dashed #9A73E8aa}
+    .ptray{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:14px;padding:14px;background:#F0F2F8;border-radius:20px;min-height:90px}
+    .pp{position:absolute;cursor:grab;filter:drop-shadow(0 4px 6px rgba(0,0,0,.25));transition:filter .15s}
+    .pp.placed{filter:none;cursor:default;pointer-events:none}
+    .pp.tray-piece{position:relative}
+    @media(max-width:520px){.puzzle-side .ref{width:120px;height:120px}}
+  </style>
   <h1>${escapeHtml(c.title)}</h1>
   <p style="margin-bottom:14px;color:#666">اسحب القطع لمكانها الصحيح</p>
-  <div id="board" style="position:relative;margin:0 auto;background:#F0F2F8;border-radius:20px;border:3px dashed #9A73E8aa"></div>
-  <div id="tray" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:18px;padding:14px;background:#F0F2F8;border-radius:20px;min-height:80px"></div>
+  <div class="puzzle-wrap">
+    <div class="puzzle-side">
+      <span class="ref-label">الصورة المرجعية</span>
+      <img id="refImg" class="ref" src="${c.imageUrl}" alt="reference">
+    </div>
+    <div>
+      <div id="board" class="puzzle-stage"></div>
+      <div id="tray" class="ptray"></div>
+    </div>
+  </div>
   <div class="result" id="res"></div>
   <button class="btn" id="reset" style="margin-top:10px;background:#aaa">↺ خلط</button>
   <script>
     const SRC = ${JSON.stringify(c.imageUrl)};
     const ROWS = ${c.rows}, COLS = ${c.cols};
-    const SIZE = Math.min(420, window.innerWidth - 80);
+    const SIZE = Math.min(440, window.innerWidth - 60);
     const PW = SIZE/COLS, PH = SIZE/ROWS;
+    const KNOB = Math.min(PW,PH)*0.22; // tab radius
+    const PAD = KNOB + 4; // svg padding around piece for tabs
     const board = document.getElementById('board'), tray = document.getElementById('tray'), res = document.getElementById('res');
     board.style.width = SIZE+'px'; board.style.height = SIZE+'px';
-    let placed = 0;
+
+    // edges grid: horizontal edges hEdge[r][c] for r in 0..ROWS, vertical vEdge[r][c] for c in 0..COLS
+    // value: 0 = flat, 1 = tab going down/right, -1 = tab going up/left
+    let hEdge=[], vEdge=[];
+    function genEdges(){
+      hEdge=[]; vEdge=[];
+      for(let r=0;r<=ROWS;r++){ const row=[]; for(let c=0;c<COLS;c++) row.push(r===0||r===ROWS?0:(Math.random()<0.5?1:-1)); hEdge.push(row); }
+      for(let r=0;r<ROWS;r++){ const row=[]; for(let c=0;c<=COLS;c++) row.push(c===0||c===COLS?0:(Math.random()<0.5?1:-1)); vEdge.push(row); }
+    }
+
+    // Build an SVG path for a piece at (r,c). Coordinates relative to piece bbox with PAD offset.
+    function piecePath(r,c){
+      const w=PW, h=PH, k=KNOB;
+      const top=hEdge[r][c], right=vEdge[r][c+1], bottom=hEdge[r+1][c], left=vEdge[r][c];
+      const x0=PAD, y0=PAD; // top-left of piece body
+      let d='M '+x0+' '+y0;
+      // top edge: left->right
+      if(top===0){ d+=' L '+(x0+w)+' '+y0; }
+      else { const mid=x0+w/2, dir=top; // dir=1 tab goes UP (out), -1 goes DOWN (in)
+        d+=' L '+(mid-k)+' '+y0;
+        d+=' C '+(mid-k)+' '+(y0-2*k*dir)+' '+(mid+k)+' '+(y0-2*k*dir)+' '+(mid+k)+' '+y0;
+        d+=' L '+(x0+w)+' '+y0;
+      }
+      // right edge: top->bottom
+      if(right===0){ d+=' L '+(x0+w)+' '+(y0+h); }
+      else { const mid=y0+h/2, dir=right; // dir=1 tab goes RIGHT (out)
+        d+=' L '+(x0+w)+' '+(mid-k);
+        d+=' C '+(x0+w+2*k*dir)+' '+(mid-k)+' '+(x0+w+2*k*dir)+' '+(mid+k)+' '+(x0+w)+' '+(mid+k);
+        d+=' L '+(x0+w)+' '+(y0+h);
+      }
+      // bottom edge: right->left
+      if(bottom===0){ d+=' L '+x0+' '+(y0+h); }
+      else { const mid=x0+w/2, dir=bottom; // dir=1 tab goes DOWN (out)
+        d+=' L '+(mid+k)+' '+(y0+h);
+        d+=' C '+(mid+k)+' '+(y0+h+2*k*dir)+' '+(mid-k)+' '+(y0+h+2*k*dir)+' '+(mid-k)+' '+(y0+h);
+        d+=' L '+x0+' '+(y0+h);
+      }
+      // left edge: bottom->top
+      if(left===0){ d+=' L '+x0+' '+y0; }
+      else { const mid=y0+h/2, dir=left; // dir=1 tab goes LEFT (out)
+        d+=' L '+x0+' '+(mid+k);
+        d+=' C '+(x0-2*k*dir)+' '+(mid+k)+' '+(x0-2*k*dir)+' '+(mid-k)+' '+x0+' '+(mid-k);
+        d+=' L '+x0+' '+y0;
+      }
+      d+=' Z';
+      return d;
+    }
+
+    function makePieceSVG(r,c){
+      const w=PW+PAD*2, h=PH+PAD*2;
+      const id='clip_'+r+'_'+c+'_'+Math.random().toString(36).slice(2,7);
+      const d=piecePath(r,c);
+      // image is full puzzle, positioned so this piece's section aligns
+      const imgX = -c*PW + PAD;
+      const imgY = -r*PH + PAD;
+      const svg='<svg class="pp" xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'" data-idx="'+(r*COLS+c)+'">'+
+        '<defs><clipPath id="'+id+'"><path d="'+d+'"/></clipPath></defs>'+
+        '<image href="'+SRC+'" x="'+imgX+'" y="'+imgY+'" width="'+(PW*COLS)+'" height="'+(PH*ROWS)+'" preserveAspectRatio="none" clip-path="url(#'+id+')"/>'+
+        '<path d="'+d+'" fill="none" stroke="rgba(0,0,0,.45)" stroke-width="1.2"/>'+
+        '</svg>';
+      return svg;
+    }
+
+    let placed=0;
     function build(){
-      placed = 0; res.textContent=''; board.innerHTML=''; tray.innerHTML='';
-      // slot outlines
+      placed=0; res.textContent=''; board.innerHTML=''; tray.innerHTML='';
+      genEdges();
+      // slot outlines on board
       for(let r=0;r<ROWS;r++) for(let cc=0;cc<COLS;cc++){
-        const slot = document.createElement('div');
-        slot.dataset.idx = r*COLS+cc;
-        slot.style.cssText='position:absolute;left:'+(cc*PW)+'px;top:'+(r*PH)+'px;width:'+PW+'px;height:'+PH+'px;border:1px dashed #9A73E866;box-sizing:border-box';
+        const slot=document.createElement('div');
+        slot.className='slot'; slot.dataset.idx=r*COLS+cc;
+        slot.style.cssText='position:absolute;left:'+(cc*PW)+'px;top:'+(r*PH)+'px;width:'+PW+'px;height:'+PH+'px;border:1px dashed #9A73E855;box-sizing:border-box;border-radius:4px';
         board.appendChild(slot);
       }
-      const pieces=[]; for(let r=0;r<ROWS;r++) for(let cc=0;cc<COLS;cc++) pieces.push({r,c:cc,idx:r*COLS+cc});
-      pieces.sort(()=>Math.random()-0.5);
-      pieces.forEach(p=>{
-        const el = document.createElement('div');
-        el.className='piece'; el.draggable=true; el.dataset.idx=p.idx;
-        el.style.cssText='width:'+PW+'px;height:'+PH+'px;background-image:url("'+SRC+'");background-size:'+(PW*COLS)+'px '+(PH*ROWS)+'px;background-position:-'+(p.c*PW)+'px -'+(p.r*PH)+'px;border-radius:8px;box-shadow:0 4px 10px rgba(0,0,0,.15);cursor:grab;border:2px solid #fff';
-        el.addEventListener('dragstart',e=>{ e.dataTransfer.setData('text',p.idx); el.style.opacity=.5; });
-        el.addEventListener('dragend',()=>el.style.opacity=1);
-        // touch
-        let touchClone=null;
-        el.addEventListener('touchstart',e=>{ touchClone=el; e.preventDefault(); },{passive:false});
-        el.addEventListener('touchmove',e=>{ const t=e.touches[0]; el.style.position='fixed'; el.style.left=(t.clientX-PW/2)+'px'; el.style.top=(t.clientY-PH/2)+'px'; el.style.zIndex=99; e.preventDefault(); },{passive:false});
-        el.addEventListener('touchend',e=>{ const t=e.changedTouches[0]; el.style.display='none'; const tgt=document.elementFromPoint(t.clientX,t.clientY); el.style.display=''; el.style.position=''; el.style.zIndex=''; el.style.left=''; el.style.top=''; if(tgt&&tgt.dataset&&+tgt.dataset.idx===p.idx) snap(el,tgt); });
+      const list=[]; for(let r=0;r<ROWS;r++) for(let cc=0;cc<COLS;cc++) list.push({r,c:cc,idx:r*COLS+cc});
+      list.sort(()=>Math.random()-0.5);
+      list.forEach(p=>{
+        const wrap=document.createElement('div');
+        wrap.innerHTML=makePieceSVG(p.r,p.c);
+        const el=wrap.firstChild;
+        el.classList.add('tray-piece');
+        el.style.margin='-'+PAD+'px';
+        attachDrag(el,p);
         tray.appendChild(el);
       });
-      board.querySelectorAll('div[data-idx]').forEach(slot=>{
-        slot.addEventListener('dragover',e=>e.preventDefault());
-        slot.addEventListener('drop',e=>{ e.preventDefault(); const idx=+e.dataTransfer.getData('text'); if(idx===+slot.dataset.idx){ const piece=tray.querySelector('.piece[data-idx="'+idx+'"]')||document.querySelector('.piece[data-idx="'+idx+'"]'); if(piece) snap(piece,slot); } });
-      });
     }
-    function snap(piece,slot){ slot.appendChild(piece); piece.draggable=false; piece.style.cursor='default'; piece.style.boxShadow='none'; piece.style.border='none'; placed++; if(placed===ROWS*COLS) res.textContent='🎉 أحسنت!'; }
-    document.getElementById('reset').onclick = build;
+
+    function attachDrag(el,p){
+      let dragging=false, ox=0, oy=0, origParent=el.parentNode;
+      const start=(cx,cy)=>{
+        if(el.classList.contains('placed')) return;
+        const r=el.getBoundingClientRect();
+        ox=cx-r.left; oy=cy-r.top;
+        // move to body for free dragging
+        document.body.appendChild(el);
+        el.style.position='fixed'; el.style.left=(cx-ox)+'px'; el.style.top=(cy-oy)+'px';
+        el.style.zIndex=999; el.style.cursor='grabbing';
+        dragging=true;
+      };
+      const move=(cx,cy)=>{ if(!dragging) return; el.style.left=(cx-ox)+'px'; el.style.top=(cy-oy)+'px'; };
+      const end=(cx,cy)=>{
+        if(!dragging) return; dragging=false; el.style.cursor='grab';
+        // find target slot
+        const br=board.getBoundingClientRect();
+        const slot=board.querySelector('.slot[data-idx="'+p.idx+'"]');
+        const sr=slot.getBoundingClientRect();
+        const dx=Math.abs((cx-ox)+(PW+PAD*2)/2 - (sr.left+sr.width/2));
+        const dy=Math.abs((cy-oy)+(PH+PAD*2)/2 - (sr.top+sr.height/2));
+        if(dx<PW*0.4 && dy<PH*0.4){
+          // snap into board
+          board.appendChild(el);
+          el.style.position='absolute';
+          el.style.left=(p.c*PW - PAD)+'px';
+          el.style.top=(p.r*PH - PAD)+'px';
+          el.style.zIndex=10;
+          el.classList.add('placed');
+          placed++;
+          if(placed===ROWS*COLS){ res.textContent='🎉 أحسنت!'; }
+        } else {
+          // back to tray
+          tray.appendChild(el);
+          el.style.position='relative'; el.style.left=''; el.style.top=''; el.style.zIndex='';
+        }
+      };
+      el.addEventListener('pointerdown',e=>{ e.preventDefault(); el.setPointerCapture(e.pointerId); start(e.clientX,e.clientY); });
+      el.addEventListener('pointermove',e=>{ if(dragging){ e.preventDefault(); move(e.clientX,e.clientY);} });
+      el.addEventListener('pointerup',e=>{ end(e.clientX,e.clientY); });
+      el.addEventListener('pointercancel',e=>{ end(e.clientX,e.clientY); });
+    }
+
+    document.getElementById('reset').onclick=build;
     build();
   </script>` + tail;
 }
