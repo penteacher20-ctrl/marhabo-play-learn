@@ -205,31 +205,48 @@ export interface ColoringConfig { title: string; imageUrl: string; }
 export function generateColoring(c: ColoringConfig): string {
   return baseHead(c.title) + `
   <h1>${escapeHtml(c.title)}</h1>
-  <p style="margin-bottom:14px;color:#666">اختر لوناً ثم اضغط على المنطقة لتلوينها</p>
-  <canvas id="cv" style="background:#fff;border-radius:20px;box-shadow:inset 0 0 0 3px #F0F2F8;cursor:crosshair;max-width:100%;touch-action:manipulation"></canvas>
-  <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center">
-    <span id="palette"></span>
+  <p style="margin-bottom:14px;color:#666">اختر أداة ولون ثم لوّن الصورة (دلو للملء، فرشاة للرسم، ممحاة للمسح)</p>
+  <canvas id="cv" style="background:#fff;border-radius:20px;box-shadow:inset 0 0 0 3px #F0F2F8;cursor:crosshair;max-width:100%;touch-action:none"></canvas>
+  <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:center;max-width:640px">
+    <div id="tools" style="display:flex;gap:6px"></div>
+    <span id="palette" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center"></span>
+    <label style="display:flex;align-items:center;gap:6px;font-weight:700;color:#555">لون
+      <input type="color" id="picker" value="#FF6C67" style="width:38px;height:38px;border:none;background:transparent;cursor:pointer">
+    </label>
+    <label style="display:flex;align-items:center;gap:6px;font-weight:700;color:#555">الحجم
+      <input type="range" id="size" min="2" max="60" value="10" style="width:120px">
+      <span id="sizeV" style="min-width:24px;display:inline-block">10</span>
+    </label>
+    <button class="btn" id="undo" style="background:#666">↶ تراجع</button>
     <button class="btn" id="reset" style="background:#aaa">↺ إعادة</button>
     <button class="btn" id="save">💾 حفظ</button>
   </div>
   <script>
     const SRC = ${JSON.stringify(c.imageUrl)};
-    const colors=['#FF6C67','#FFCC35','#8EE870','#2FEAFF','#9A73E8','#FF8FBF','#7B4F2A','#222'];
-    let color=colors[0];
+    const colors=['#FF6C67','#FF8FBF','#FFCC35','#FF8A1F','#8EE870','#2FB46B','#2FEAFF','#3B82F6','#9A73E8','#7B4F2A','#222','#fff'];
+    let color=colors[0], tool='brush', size=10;
     const pal=document.getElementById('palette');
-    pal.innerHTML=colors.map((c,i)=>'<button data-c="'+c+'" style="width:34px;height:34px;border-radius:50%;border:3px solid '+(i===0?'#222':'#fff')+';background:'+c+';margin:0 4px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.2)"></button>').join('');
-    pal.querySelectorAll('button').forEach(b=>b.onclick=()=>{ color=b.dataset.c; pal.querySelectorAll('button').forEach(x=>x.style.borderColor='#fff'); b.style.borderColor='#222'; });
+    pal.innerHTML=colors.map((c,i)=>'<button data-c="'+c+'" aria-label="'+c+'" style="width:30px;height:30px;border-radius:50%;border:3px solid '+(i===0?'#222':'#fff')+';background:'+c+';cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.2);padding:0"></button>').join('');
+    function selectColor(c){ color=c; document.getElementById('picker').value=/^#[0-9a-f]{6}$/i.test(c)?c:'#000000'; pal.querySelectorAll('button').forEach(x=>x.style.borderColor=x.dataset.c===c?'#222':'#fff'); }
+    pal.querySelectorAll('button').forEach(b=>b.onclick=()=>selectColor(b.dataset.c));
+    document.getElementById('picker').oninput=e=>{ selectColor(e.target.value); pal.querySelectorAll('button').forEach(x=>x.style.borderColor='#fff'); };
+    const tools=[['brush','🖌️ فرشاة'],['fill','🪣 دلو'],['eraser','🧽 ممحاة']];
+    const tEl=document.getElementById('tools');
+    tEl.innerHTML=tools.map(([k,l])=>'<button data-t="'+k+'" class="btn" style="padding:8px 12px;font-size:.9rem;background:'+(k==='brush'?'#9A73E8':'#bbb')+'">'+l+'</button>').join('');
+    tEl.querySelectorAll('button').forEach(b=>b.onclick=()=>{ tool=b.dataset.t; tEl.querySelectorAll('button').forEach(x=>x.style.background=x.dataset.t===tool?'#9A73E8':'#bbb'); cv.style.cursor=tool==='fill'?'pointer':'crosshair'; });
+    const sz=document.getElementById('size'), szV=document.getElementById('sizeV');
+    sz.oninput=()=>{ size=+sz.value; szV.textContent=size; };
     const cv=document.getElementById('cv'),ctx=cv.getContext('2d',{willReadFrequently:true});
     const img=new Image(); img.crossOrigin='anonymous';
-    img.onload=()=>{ const max=560; const r=Math.min(1,max/img.width,max/img.height); cv.width=img.width*r; cv.height=img.height*r; redraw(); };
-    img.onerror=()=>{ document.getElementById('res')&&(document.getElementById('res').textContent='تعذّر تحميل الصورة'); };
+    img.onload=()=>{ const max=620; const r=Math.min(1,max/img.width,max/img.height); cv.width=img.width*r; cv.height=img.height*r; redraw(); pushHistory(); };
+    img.onerror=()=>{ cv.width=620;cv.height=420; ctx.fillStyle='#fff';ctx.fillRect(0,0,cv.width,cv.height); pushHistory(); };
     img.src=SRC;
-    function redraw(){ ctx.clearRect(0,0,cv.width,cv.height); ctx.fillStyle='#fff'; ctx.fillRect(0,0,cv.width,cv.height); ctx.drawImage(img,0,0,cv.width,cv.height); }
-    function hex(h){ return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16),255]; }
+    function redraw(){ ctx.clearRect(0,0,cv.width,cv.height); ctx.fillStyle='#fff'; ctx.fillRect(0,0,cv.width,cv.height); if(img.complete&&img.naturalWidth) ctx.drawImage(img,0,0,cv.width,cv.height); }
+    const history=[]; function pushHistory(){ try{ history.push(ctx.getImageData(0,0,cv.width,cv.height)); if(history.length>20)history.shift(); }catch(e){} }
+    function hex(h){ if(h.length===4)h='#'+h[1]+h[1]+h[2]+h[2]+h[3]+h[3]; return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16),255]; }
     function fill(x,y,col){
       const id=ctx.getImageData(0,0,cv.width,cv.height); const d=id.data; const W=cv.width,H=cv.height;
       const i0=(y*W+x)*4; const sr=d[i0],sg=d[i0+1],sb=d[i0+2];
-      // don't fill black-ish (lines)
       if(sr<60&&sg<60&&sb<60) return;
       const tr=col[0],tg=col[1],tb=col[2];
       if(Math.abs(sr-tr)+Math.abs(sg-tg)+Math.abs(sb-tb)<10) return;
@@ -243,8 +260,15 @@ export function generateColoring(c: ColoringConfig): string {
       }
       ctx.putImageData(id,0,0);
     }
-    cv.addEventListener('click',e=>{ const r=cv.getBoundingClientRect(); const x=Math.floor((e.clientX-r.left)*cv.width/r.width); const y=Math.floor((e.clientY-r.top)*cv.height/r.height); fill(x,y,hex(color)); });
-    document.getElementById('reset').onclick=redraw;
+    function pos(e){ const r=cv.getBoundingClientRect(); const t=e.touches?e.touches[0]:e; return { x:Math.floor((t.clientX-r.left)*cv.width/r.width), y:Math.floor((t.clientY-r.top)*cv.height/r.height) }; }
+    let drawing=false,lx=0,ly=0;
+    function down(e){ const p=pos(e); if(tool==='fill'){ fill(p.x,p.y,hex(color)); pushHistory(); return; } drawing=true; lx=p.x; ly=p.y; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle=tool==='eraser'?'#ffffff':color; ctx.lineWidth=size; ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(lx+0.01,ly+0.01); ctx.stroke(); e.preventDefault&&e.preventDefault(); }
+    function move(e){ if(!drawing)return; const p=pos(e); ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(p.x,p.y); ctx.stroke(); lx=p.x; ly=p.y; e.preventDefault&&e.preventDefault(); }
+    function up(){ if(drawing){ drawing=false; pushHistory(); } }
+    cv.addEventListener('mousedown',down); cv.addEventListener('mousemove',move); window.addEventListener('mouseup',up);
+    cv.addEventListener('touchstart',down,{passive:false}); cv.addEventListener('touchmove',move,{passive:false}); window.addEventListener('touchend',up);
+    document.getElementById('undo').onclick=()=>{ if(history.length>1){ history.pop(); const last=history[history.length-1]; ctx.putImageData(last,0,0); } };
+    document.getElementById('reset').onclick=()=>{ redraw(); history.length=0; pushHistory(); };
     document.getElementById('save').onclick=()=>{ const a=document.createElement('a'); a.download='coloring.png'; a.href=cv.toDataURL(); a.click(); };
   </script>` + tail;
 }
