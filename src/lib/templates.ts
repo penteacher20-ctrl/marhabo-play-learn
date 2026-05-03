@@ -204,35 +204,74 @@ export function generatePuzzle(c: PuzzleConfig): string {
 export interface ColoringConfig { title: string; imageUrl: string; }
 export function generateColoring(c: ColoringConfig): string {
   return baseHead(c.title) + `
-  <h1>${escapeHtml(c.title)}</h1>
-  <p style="margin-bottom:14px;color:#666">اختر أداة ولون ثم لوّن الصورة (دلو للملء، فرشاة للرسم، ممحاة للمسح)</p>
-  <div id="stage" style="position:relative;width:100%;max-width:640px;height:min(70vh,520px);overflow:hidden;border-radius:20px;background:#fff;box-shadow:inset 0 0 0 3px #F0F2F8;touch-action:none;-webkit-user-select:none;user-select:none">
-    <div id="zoom" style="position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform">
-      <canvas id="cv" style="display:block;cursor:crosshair;touch-action:none"></canvas>
-    </div>
-    <div style="position:absolute;left:8px;bottom:8px;display:flex;gap:6px;z-index:2">
-      <button class="btn" id="zin" style="padding:6px 10px;font-size:.9rem">➕</button>
-      <button class="btn" id="zout" style="padding:6px 10px;font-size:.9rem;background:#bbb">➖</button>
-      <button class="btn" id="zfit" style="padding:6px 10px;font-size:.9rem;background:#666">⤢</button>
-    </div>
-  </div>
-  <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:center;max-width:640px">
-    <div id="tools" style="display:flex;gap:6px"></div>
-    <span id="palette" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center"></span>
-    <label style="display:flex;align-items:center;gap:6px;font-weight:700;color:#555">لون
-      <input type="color" id="picker" value="#FF6C67" style="width:38px;height:38px;border:none;background:transparent;cursor:pointer">
-    </label>
-    <label style="display:flex;align-items:center;gap:6px;font-weight:700;color:#555">الحجم
-      <input type="range" id="size" min="2" max="60" value="10" style="width:120px">
-      <span id="sizeV" style="min-width:24px;display:inline-block">10</span>
-    </label>
-    <label style="display:flex;align-items:center;gap:6px;font-weight:700;color:#555">تنعيم
-      <input type="range" id="smooth" min="0" max="90" value="55" style="width:100px">
-      <span id="smoothV" style="min-width:24px;display:inline-block">55</span>
-    </label>
-    <button class="btn" id="undo" style="background:#666">↶ تراجع</button>
-    <button class="btn" id="reset" style="background:#aaa">↺ إعادة</button>
-    <button class="btn" id="save">💾 حفظ</button>
+  <style>
+    body{padding:0!important;display:block!important;background:#F0F2F8!important}
+    .card{display:none!important}
+    .color-app{position:fixed;inset:0;display:grid;grid-template-columns:280px 1fr;gap:0;background:#F0F2F8}
+    .color-app header{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#fff;border-bottom:1px solid #e7e9f1;box-shadow:0 1px 4px rgba(0,0,0,.04);z-index:3}
+    .color-app header h1{font-size:1.1rem;color:#9A73E8;margin:0}
+    .color-app aside{background:#fff;border-inline-end:1px solid #e7e9f1;padding:14px;overflow-y:auto;display:flex;flex-direction:column;gap:14px}
+    .color-app main{position:relative;overflow:hidden;background:#dfe3ee}
+    .panel{background:#F8F9FC;border-radius:14px;padding:10px}
+    .panel h3{font-size:.8rem;color:#888;font-weight:800;margin-bottom:8px;text-align:start}
+    .tool-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+    .tool-row .btn{padding:10px 6px;font-size:.85rem;border-radius:12px;box-shadow:none}
+    .swatches{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+    .swatches button{aspect-ratio:1;border-radius:50%;border:3px solid #fff;cursor:pointer;padding:0;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+    .row{display:flex;align-items:center;gap:8px;justify-content:space-between}
+    .row label{font-weight:700;color:#555;font-size:.85rem}
+    .actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:auto}
+    .actions .btn{padding:10px 8px;font-size:.85rem;border-radius:12px;box-shadow:none}
+    .zoom-bar{position:absolute;left:12px;bottom:12px;display:flex;gap:6px;z-index:2}
+    .zoom-bar .btn{padding:8px 12px;font-size:.9rem;border-radius:10px;box-shadow:none}
+    @media (max-width:760px){
+      .color-app{grid-template-columns:1fr;grid-template-rows:auto 1fr auto}
+      .color-app aside{order:3;border-inline-end:none;border-top:1px solid #e7e9f1;flex-direction:row;overflow-x:auto;overflow-y:hidden;padding:10px;gap:10px;max-height:42vh}
+      .panel{min-width:170px;flex:0 0 auto}
+      .actions{margin-top:0}
+    }
+  </style>
+  <div class="color-app">
+    <header>
+      <h1>${escapeHtml(c.title)}</h1>
+      <span style="font-size:.8rem;color:#888">إصبع للرسم • إصبعان للتكبير</span>
+    </header>
+    <aside>
+      <div class="panel">
+        <h3>الأدوات</h3>
+        <div id="tools" class="tool-row"></div>
+      </div>
+      <div class="panel">
+        <h3>الألوان</h3>
+        <div id="palette" class="swatches"></div>
+        <div class="row" style="margin-top:8px">
+          <label>لون مخصص</label>
+          <input type="color" id="picker" value="#FF6C67" style="width:42px;height:34px;border:none;background:transparent;cursor:pointer;padding:0">
+        </div>
+      </div>
+      <div class="panel">
+        <h3>الإعدادات</h3>
+        <div class="row"><label>الحجم</label><span id="sizeV" style="color:#9A73E8;font-weight:900">10</span></div>
+        <input type="range" id="size" min="2" max="60" value="10" style="width:100%">
+        <div class="row" style="margin-top:6px"><label>تنعيم</label><span id="smoothV" style="color:#9A73E8;font-weight:900">55</span></div>
+        <input type="range" id="smooth" min="0" max="90" value="55" style="width:100%">
+      </div>
+      <div class="actions">
+        <button class="btn" id="undo" style="background:#666">↶ تراجع</button>
+        <button class="btn" id="reset" style="background:#aaa">↺ إعادة</button>
+        <button class="btn" id="save" style="grid-column:1/-1">💾 حفظ الصورة</button>
+      </div>
+    </aside>
+    <main id="stage" style="touch-action:none;-webkit-user-select:none;user-select:none">
+      <div id="zoom" style="position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform">
+        <canvas id="cv" style="display:block;cursor:crosshair;touch-action:none;background:#fff;box-shadow:0 8px 30px rgba(0,0,0,.15)"></canvas>
+      </div>
+      <div class="zoom-bar">
+        <button class="btn" id="zin">➕</button>
+        <button class="btn" id="zout" style="background:#bbb">➖</button>
+        <button class="btn" id="zfit" style="background:#666">⤢ ملاءمة</button>
+      </div>
+    </main>
   </div>
   <script>
     const SRC = ${JSON.stringify(c.imageUrl)};
