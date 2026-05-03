@@ -220,7 +220,7 @@ export function generatePuzzle(c: PuzzleConfig): string {
 
     let SIZE=400, PW=0, PH=0, KNOB=0, PAD=0;
     let hEdge=[], vEdge=[];
-    let imgCanvas=null, imgReady=false;
+    let imgReady=false;
 
     function calcSize(){
       const wrap=board.parentNode;
@@ -235,14 +235,8 @@ export function generatePuzzle(c: PuzzleConfig): string {
     function loadImage(){
       return new Promise((resolve)=>{
         const img=new Image();
-        img.crossOrigin='anonymous';
-        img.onload=()=>{
-          imgCanvas=document.createElement('canvas');
-          imgCanvas.width=img.naturalWidth; imgCanvas.height=img.naturalHeight;
-          imgCanvas.getContext('2d').drawImage(img,0,0);
-          imgReady=true; resolve(true);
-        };
-        img.onerror=()=>resolve(false);
+        img.onload=()=>{ imgReady=true; resolve(true); };
+        img.onerror=()=>{ imgReady=true; resolve(false); };
         img.src=SRC;
       });
     }
@@ -269,36 +263,52 @@ export function generatePuzzle(c: PuzzleConfig): string {
       return d+' Z';
     }
 
-    // Render piece to canvas (avoids SVG image CORS taint issues for export, gives crisp result)
-    function makePieceCanvas(r,c){
+    // Use CSS background-image + SVG clip-path. Each piece is a div sized W×H
+    // with the FULL puzzle image as background, positioned so the (r,c) cell
+    // lands at (PAD,PAD). Then an inline <svg> clipPath cuts the jigsaw shape.
+    function makePieceEl(r,c){
       const W=PW+PAD*2, H=PH+PAD*2;
-      const cv=document.createElement('canvas');
-      const dpr=window.devicePixelRatio||1;
-      cv.width=W*dpr; cv.height=H*dpr;
-      cv.style.width=W+'px'; cv.style.height=H+'px';
-      const ctx=cv.getContext('2d'); ctx.scale(dpr,dpr);
-      // Build path
-      const p=new Path2D(piecePath(r,c));
-      ctx.save();
-      ctx.clip(p);
-      if(imgReady){
-        // map full image into the SIZE×SIZE puzzle area; this piece occupies (c*PW, r*PH)
-        const sx=imgCanvas.width, sy=imgCanvas.height;
-        // dest top-left of full image relative to canvas: shift so piece (r,c) lands at (PAD,PAD)
-        const dx=PAD - c*PW;
-        const dy=PAD - r*PH;
-        ctx.drawImage(imgCanvas, 0,0, sx,sy, dx, dy, SIZE, SIZE);
-      } else {
-        ctx.fillStyle='#c9b8f0'; ctx.fillRect(0,0,W,H);
-      }
-      ctx.restore();
+      const d=piecePath(r,c);
+      const clipId='clip_'+r+'_'+c+'_'+Math.random().toString(36).slice(2,7);
+      const wrap=document.createElement('div');
+      wrap.className='pp';
+      wrap.dataset.idx=r*COLS+c;
+      wrap.dataset.r=r; wrap.dataset.c=c;
+      wrap.style.cssText='position:relative;width:'+W+'px;height:'+H+'px';
+
+      // background layer (clipped)
+      const bg=document.createElement('div');
+      bg.style.cssText='position:absolute;inset:0;background-image:url("'+SRC+'");background-repeat:no-repeat;background-size:'+SIZE+'px '+SIZE+'px;background-position:'+(PAD-c*PW)+'px '+(PAD-r*PH)+'px;clip-path:url(#'+clipId+');-webkit-clip-path:url(#'+clipId+')';
+      wrap.appendChild(bg);
+
+      // SVG with clipPath def + outline stroke on top
+      const svgNs='http://www.w3.org/2000/svg';
+      const svg=document.createElementNS(svgNs,'svg');
+      svg.setAttribute('width',W); svg.setAttribute('height',H);
+      svg.setAttribute('viewBox','0 0 '+W+' '+H);
+      svg.style.cssText='position:absolute;inset:0;pointer-events:none;overflow:visible';
+      const defs=document.createElementNS(svgNs,'defs');
+      const cp=document.createElementNS(svgNs,'clipPath');
+      cp.setAttribute('id',clipId);
+      cp.setAttribute('clipPathUnits','userSpaceOnUse');
+      const cpPath=document.createElementNS(svgNs,'path');
+      cpPath.setAttribute('d',d);
+      cp.appendChild(cpPath); defs.appendChild(cp); svg.appendChild(defs);
       // outline
-      ctx.lineWidth=1.4; ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.stroke(p);
-      ctx.lineWidth=.6; ctx.strokeStyle='rgba(255,255,255,.5)'; ctx.stroke(p);
-      cv.className='pp';
-      cv.dataset.idx=r*COLS+c;
-      cv.dataset.r=r; cv.dataset.c=c;
-      return cv;
+      const outline=document.createElementNS(svgNs,'path');
+      outline.setAttribute('d',d);
+      outline.setAttribute('fill','none');
+      outline.setAttribute('stroke','rgba(0,0,0,.45)');
+      outline.setAttribute('stroke-width','1.4');
+      svg.appendChild(outline);
+      const inner=document.createElementNS(svgNs,'path');
+      inner.setAttribute('d',d);
+      inner.setAttribute('fill','none');
+      inner.setAttribute('stroke','rgba(255,255,255,.45)');
+      inner.setAttribute('stroke-width','.6');
+      svg.appendChild(inner);
+      wrap.appendChild(svg);
+      return wrap;
     }
 
     let placed=0, total=0, pieces=[];
@@ -324,7 +334,7 @@ export function generatePuzzle(c: PuzzleConfig): string {
       const list=[]; for(let r=0;r<ROWS;r++) for(let cc=0;cc<COLS;cc++) list.push({r,c:cc});
       list.sort(()=>Math.random()-0.5);
       list.forEach(p=>{
-        const el=makePieceCanvas(p.r,p.c);
+        const el=makePieceEl(p.r,p.c);
         el.style.margin=(-PAD)+'px';
         attachDrag(el,p);
         tray.appendChild(el);
