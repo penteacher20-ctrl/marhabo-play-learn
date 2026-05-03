@@ -6,6 +6,7 @@ import { Footer } from "@/components/Footer";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
+import { upgradeUserColoringGames } from "@/lib/upgradeColoring";
 
 export const Route = createFileRoute("/dashboard")({ component: Dashboard });
 
@@ -16,6 +17,7 @@ function Dashboard() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [games, setGames] = useState<Game[]>([]);
+  const [upgrading, setUpgrading] = useState(false);
 
   const load = () => {
     if (!user) return;
@@ -37,6 +39,22 @@ function Dashboard() {
     setGames(games.filter(g => g.id !== id));
   };
 
+  const upgradeColoring = async () => {
+    if (!user) return;
+    if (!confirm("سيتم تحديث جميع ألعاب التلوين القديمة لتتوافق مع التصميم الجديد. هل تريد المتابعة؟")) return;
+    setUpgrading(true);
+    const tId = toast.loading("جاري تحديث ألعاب التلوين...");
+    try {
+      const res = await upgradeUserColoringGames(user.id, (m) => toast.message(m, { id: tId }));
+      toast.success(`تم: ${res.upgraded}/${res.total} • تخطي: ${res.skipped} • أخطاء: ${res.errors}`, { id: tId });
+      load();
+    } catch (e: any) {
+      toast.error(e.message ?? "فشل التحديث", { id: tId });
+    } finally {
+      setUpgrading(false);
+    }
+  };
+
   const totalPlays = games.reduce((s, g) => s + g.play_count, 0);
 
   return (
@@ -53,6 +71,9 @@ function Dashboard() {
         <div className="flex flex-wrap gap-3 mb-8">
           <Link to="/upload" className="bubble-btn text-white" style={{ background: "var(--gradient-primary)" }}>+ {tr("upload_new")}</Link>
           <Link to="/templates" className="bubble-btn text-foreground" style={{ background: "var(--yellow-fun)" }}>✨ {tr("from_template")}</Link>
+          <button onClick={upgradeColoring} disabled={upgrading} className="bubble-btn text-white disabled:opacity-60" style={{ background: "var(--gradient-fresh, linear-gradient(135deg,#10b981,#06b6d4))" }}>
+            {upgrading ? "جاري التحديث..." : "🎨 ترقية ألعاب التلوين القديمة"}
+          </button>
         </div>
 
         {games.length === 0 ? (
