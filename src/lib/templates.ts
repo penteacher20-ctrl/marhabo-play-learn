@@ -192,6 +192,7 @@ export function generatePuzzle(c: PuzzleConfig): string {
           <option value="5">صعب (5×5)</option>
           <option value="6">خبير (6×6)</option>
         </select>
+        <button id="hint" style="background:linear-gradient(135deg,#FFB347,#FF8A65)">💡 تلميح</button>
         <button id="reset">↺ خلط جديد</button>
       </div>
     </div>
