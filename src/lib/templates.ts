@@ -280,6 +280,7 @@ export function generateColoring(c: ColoringConfig): string {
     const SRC = ${JSON.stringify(c.imageUrl)};
     const colors=['#FF6C67','#FF8FBF','#FFCC35','#FF8A1F','#8EE870','#2FB46B','#2FEAFF','#3B82F6','#9A73E8','#7B4F2A','#222','#fff'];
     let color=colors[0], tool='brush', size=10;
+    const PAINT_ALPHA = 210;
     const pal=document.getElementById('palette');
     pal.innerHTML=colors.map((c,i)=>'<button data-c="'+c+'" aria-label="'+c+'" style="border-color:'+(i===0?'#222':'#fff')+';background:'+c+'"></button>').join('');
     function selectColor(c){ color=c; document.getElementById('picker').value=/^#[0-9a-f]{6}$/i.test(c)?c:'#000000'; pal.querySelectorAll('button').forEach(x=>x.style.borderColor=x.dataset.c===c?'#222':'#fff'); }
@@ -327,7 +328,7 @@ export function generateColoring(c: ColoringConfig): string {
         const p=cy*W+cx; if(visited[p]) continue; visited[p]=1;
         const i=p*4; const cs=sample(i);
         if(Math.abs(cs[0]-sr)>tol||Math.abs(cs[1]-sg)>tol||Math.abs(cs[2]-sb)>tol) continue;
-        fg[i]=tr;fg[i+1]=tg;fg[i+2]=tb;fg[i+3]=255;
+        fg[i]=tr;fg[i+1]=tg;fg[i+2]=tb;fg[i+3]=PAINT_ALPHA;
         stack.push([cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]);
       }
       ctx.putImageData(fgImg,0,0);
@@ -362,6 +363,7 @@ export function generateColoring(c: ColoringConfig): string {
         const p=pos(e); drawId=e.pointerId; drawing=true; sx0=p.x; sy0=p.y; pts=[{x:p.x,y:p.y}];
         ctx.lineCap='round'; ctx.lineJoin='round'; ctx.lineWidth=size;
         ctx.globalCompositeOperation = tool==='eraser' ? 'destination-out' : 'source-over';
+        ctx.globalAlpha = tool==='eraser' ? 1 : PAINT_ALPHA / 255;
         ctx.strokeStyle = tool==='eraser' ? 'rgba(0,0,0,1)' : color;
         ctx.fillStyle = ctx.strokeStyle;
         ctx.beginPath(); ctx.arc(p.x,p.y,size/2,0,Math.PI*2); ctx.fill();
