@@ -6,7 +6,7 @@ import { Footer } from "@/components/Footer";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { generateQuiz, generateBlanks, generateMatching, generateWheel, generatePuzzle, generateDraw } from "@/lib/templates";
+import { generateQuiz, generateBlanks, generateMatching, generateWheel, generatePuzzle, generateDraw, generateColoring } from "@/lib/templates";
 
 export const Route = createFileRoute("/templates/$slug/new")({ component: NewFromTemplate });
 
@@ -22,12 +22,13 @@ function NewFromTemplate() {
   const [busy, setBusy] = useState(false);
 
   // builder state
-  const [quizQs, setQuizQs] = useState<{ q: string; options: string[]; correct: number }[]>([{ q: "", options: ["", ""], correct: 0 }]);
+  const [quizQs, setQuizQs] = useState<{ q: string; options: string[]; correct: number }[]>([{ q: "", options: ["", "", "", ""], correct: 0 }]);
   const [blanksList, setBlanksList] = useState<{ text: string; answers: string[] }[]>([{ text: "عاصمة مصر هي ___ .", answers: ["القاهرة"] }]);
   const [pairs, setPairs] = useState<{ a: string; b: string }[]>([{ a: "", b: "" }, { a: "", b: "" }]);
   const [wheelItems, setWheelItems] = useState<string[]>(["", "", ""]);
-  const [puzzleWords, setPuzzleWords] = useState<string[]>(["", ""]);
-  const [drawPrompt, setDrawPrompt] = useState("");
+  const [puzzleImage, setPuzzleImage] = useState<File | null>(null);
+  const [puzzleGrid, setPuzzleGrid] = useState(3);
+  const [colorImage, setColorImage] = useState<File | null>(null);
 
   if (!user) {
     return (
@@ -74,22 +75,33 @@ function NewFromTemplate() {
       if (items.length < 2) { toast.error("أضف عنصرين على الأقل"); return null; }
       return generateWheel({ title, items });
     }
-    if (slug === "puzzle") {
-      const words = puzzleWords.map(w => w.trim()).filter(w => w.length >= 2);
-      if (!words.length) { toast.error("أضف كلمة واحدة على الأقل (حرفان فأكثر)"); return null; }
-      return generatePuzzle({ title, words });
-    }
-    if (slug === "draw") {
-      return generateDraw({ title, prompt: drawPrompt.trim() || undefined });
-    }
     return null;
+  };
+
+  const uploadAsset = async (file: File): Promise<string> => {
+    const ts = Date.now();
+    const ext = file.name.split(".").pop() || "png";
+    const path = `${user.id}/${ts}-asset.${ext}`;
+    const { error } = await supabase.storage.from("game-files").upload(path, file, { contentType: file.type });
+    if (error) throw error;
+    return supabase.storage.from("game-files").getPublicUrl(path).data.publicUrl;
   };
 
   const submit = async () => {
     if (!title.trim()) { toast.error("أضف عنوان اللعبة"); return; }
-    const html = buildHtml(); if (!html) return;
     setBusy(true);
     try {
+      let html = buildHtml();
+      if (slug === "puzzle") {
+        if (!puzzleImage) { toast.error("ارفع صورة للبازل"); setBusy(false); return; }
+        const url = await uploadAsset(puzzleImage);
+        html = generatePuzzle({ title, imageUrl: url, rows: puzzleGrid, cols: puzzleGrid });
+      } else if (slug === "draw") {
+        if (!colorImage) { toast.error("ارفع صورة للتلوين"); setBusy(false); return; }
+        const url = await uploadAsset(colorImage);
+        html = generateColoring({ title, imageUrl: url });
+      }
+      if (!html) { setBusy(false); return; }
       const ts = Date.now();
       const path = `${user.id}/${ts}-${slug}.html`;
       const blob = new Blob([html], { type: "text/html" });
@@ -120,11 +132,24 @@ function NewFromTemplate() {
           {slug === "blanks" && <BlanksBuilder list={blanksList} setList={setBlanksList} />}
           {slug === "matching" && <MatchingBuilder pairs={pairs} setPairs={setPairs} />}
           {slug === "wheel" && <WheelBuilder items={wheelItems} setItems={setWheelItems} />}
-          {slug === "puzzle" && <PuzzleBuilder words={puzzleWords} setWords={setPuzzleWords} />}
+          {slug === "puzzle" && (
+            <div className="space-y-3">
+              <Field label="صورة البازل (PNG/JPG)">
+                <input type="file" accept="image/*" onChange={(e) => setPuzzleImage(e.target.files?.[0] ?? null)} className="input" />
+              </Field>
+              {puzzleImage && <img src={URL.createObjectURL(puzzleImage)} alt="" className="max-h-48 mx-auto rounded-2xl" />}
+              <Field label={`صعوبة (${puzzleGrid}×${puzzleGrid})`}>
+                <input type="range" min={2} max={6} value={puzzleGrid} onChange={(e) => setPuzzleGrid(+e.target.value)} className="w-full" />
+              </Field>
+            </div>
+          )}
           {slug === "draw" && (
-            <Field label="موضوع الرسم (اختياري)">
-              <input value={drawPrompt} onChange={(e) => setDrawPrompt(e.target.value)} placeholder="مثال: ارسم منزلك المفضل" className="input" />
-            </Field>
+            <div className="space-y-3">
+              <Field label="صورة للتلوين (خطوط على خلفية بيضاء)">
+                <input type="file" accept="image/*" onChange={(e) => setColorImage(e.target.files?.[0] ?? null)} className="input" />
+              </Field>
+              {colorImage && <img src={URL.createObjectURL(colorImage)} alt="" className="max-h-48 mx-auto rounded-2xl" />}
+            </div>
           )}
 
           <div className="flex items-center justify-between bg-secondary/50 rounded-2xl px-4 py-3">
@@ -243,21 +268,6 @@ function WheelBuilder({ items, setItems }: { items: string[]; setItems: any }) {
   );
 }
 
-function PuzzleBuilder({ words, setWords }: { words: string[]; setWords: any }) {
-  return (
-    <div>
-      <SectionHeader title="كلمات للترتيب" onAdd={() => setWords([...words, ""])} />
-      <div className="space-y-2">
-        {words.map((w, i) => (
-          <div key={i} className="flex gap-2">
-            <input value={w} onChange={(e) => setWords(words.map((x, k) => k === i ? e.target.value : x))} placeholder={`كلمة ${i + 1}`} className="input flex-1" />
-            <button type="button" onClick={() => setWords(words.filter((_, k) => k !== i))} className="px-3 rounded-xl bg-destructive/10 text-destructive font-bold">×</button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function Wrapper({ children }: { children: React.ReactNode }) {
   return (
