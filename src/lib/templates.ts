@@ -412,7 +412,12 @@ export function generateColoring(c: ColoringConfig): string {
 
     document.getElementById('undo').onclick=()=>{ if(history.length>1){ history.pop(); const last=history[history.length-1]; ctx.putImageData(last,0,0); } };
     document.getElementById('reset').onclick=()=>{ redraw(); history.length=0; pushHistory(); };
-    document.getElementById('save').onclick=()=>{ const a=document.createElement('a'); a.download='coloring.png'; a.href=cv.toDataURL(); a.click(); };
+    document.getElementById('save').onclick=()=>{
+      const out=document.createElement('canvas'); out.width=cv.width; out.height=cv.height;
+      const octx=out.getContext('2d');
+      octx.drawImage(bg,0,0); octx.drawImage(cv,0,0);
+      const a=document.createElement('a'); a.download='coloring.png'; a.href=out.toDataURL(); a.click();
+    };
   </script>` + tail;
 }
 
