@@ -75,15 +75,16 @@ function NewFromTemplate() {
       if (items.length < 2) { toast.error("أضف عنصرين على الأقل"); return null; }
       return generateWheel({ title, items });
     }
-    if (slug === "puzzle") {
-      const words = puzzleWords.map(w => w.trim()).filter(w => w.length >= 2);
-      if (!words.length) { toast.error("أضف كلمة واحدة على الأقل (حرفان فأكثر)"); return null; }
-      return generatePuzzle({ title, words });
-    }
-    if (slug === "draw") {
-      return generateDraw({ title, prompt: drawPrompt.trim() || undefined });
-    }
     return null;
+  };
+
+  const uploadAsset = async (file: File): Promise<string> => {
+    const ts = Date.now();
+    const ext = file.name.split(".").pop() || "png";
+    const path = `${user.id}/${ts}-asset.${ext}`;
+    const { error } = await supabase.storage.from("game-files").upload(path, file, { contentType: file.type });
+    if (error) throw error;
+    return supabase.storage.from("game-files").getPublicUrl(path).data.publicUrl;
   };
 
   const submit = async () => {
