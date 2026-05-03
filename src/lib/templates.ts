@@ -176,7 +176,7 @@ export function generatePuzzle(c: PuzzleConfig): string {
     .pz-side .progress{font-size:.85rem;color:#666;font-weight:700}
     .pz-side .bar{width:100%;height:8px;background:#eee;border-radius:99px;overflow:hidden}
     .pz-side .bar>i{display:block;height:100%;width:0;background:linear-gradient(90deg,#9A73E8,#6D5BFF);transition:width .3s}
-    .pp{cursor:grab;user-select:none;-webkit-user-drag:none;touch-action:none;filter:drop-shadow(0 3px 4px rgba(0,0,0,.25));transition:transform .1s}
+    .pp{cursor:grab;user-select:none;-webkit-user-drag:none;touch-action:none;filter:drop-shadow(0 2px 0 rgba(0,0,0,.5)) drop-shadow(0 4px 6px rgba(0,0,0,.25));transition:transform .1s}
     .pp:active{cursor:grabbing;transform:scale(1.05)}
     .pp.placed{cursor:default;filter:none;pointer-events:none}
     .pz-result{font-size:1.4rem;font-weight:900;color:#7a4fd6;text-align:center;min-height:1.5em}
@@ -294,18 +294,22 @@ export function generatePuzzle(c: PuzzleConfig): string {
       const cpPath=document.createElementNS(svgNs,'path');
       cpPath.setAttribute('d',d);
       cp.appendChild(cpPath); defs.appendChild(cp); svg.appendChild(defs);
-      // outline
+      // Cartoon-style double outline: bold black + crisp white inner highlight.
       const outline=document.createElementNS(svgNs,'path');
       outline.setAttribute('d',d);
       outline.setAttribute('fill','none');
-      outline.setAttribute('stroke','rgba(0,0,0,.45)');
-      outline.setAttribute('stroke-width','1.4');
+      outline.setAttribute('stroke','#111');
+      outline.setAttribute('stroke-width','2.2');
+      outline.setAttribute('stroke-linejoin','round');
+      outline.setAttribute('stroke-linecap','round');
       svg.appendChild(outline);
       const inner=document.createElementNS(svgNs,'path');
       inner.setAttribute('d',d);
       inner.setAttribute('fill','none');
-      inner.setAttribute('stroke','rgba(255,255,255,.45)');
-      inner.setAttribute('stroke-width','.6');
+      inner.setAttribute('stroke','#fff');
+      inner.setAttribute('stroke-width','1');
+      inner.setAttribute('stroke-linejoin','round');
+      inner.setAttribute('stroke-opacity','.85');
       svg.appendChild(inner);
       wrap.appendChild(svg);
       return wrap;
