@@ -46,9 +46,13 @@ function PlayPage() {
             const res = await fetch((data as Game).file_url!);
             let txt = await res.text();
             const isColoring = (data as Game).type === "template:draw" && /const\s+SRC\s*=/.test(txt);
-            const imageUrl = isColoring ? extractColoringImageUrl(txt) : null;
-            if (imageUrl) {
+            const isPuzzle = (data as Game).type?.startsWith("template:puzzle") && /const\s+SRC\s*=/.test(txt);
+            const imageUrl = (isColoring || isPuzzle) ? extractSrc(txt) : null;
+            if (isColoring && imageUrl) {
               txt = generateColoring({ title: (data as Game).title, imageUrl });
+            } else if (isPuzzle && imageUrl) {
+              const grid = extractPuzzleGrid(txt);
+              txt = generatePuzzle({ title: (data as Game).title, imageUrl, rows: grid, cols: grid });
             }
             txt = txt.replace(
               ".card{display:none!important}",
