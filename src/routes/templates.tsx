@@ -34,7 +34,7 @@ function TemplatesPage() {
                 <p className="text-xs text-muted-foreground mt-1 mb-4">{lang === "ar" ? t.name_en : t.name_ar}</p>
                 <p className="text-sm text-foreground/70 mb-4">{lang === "ar" ? t.description_ar : t.description_en}</p>
                 {t.is_available ? (
-                  <Link to="/upload" className="bubble-btn !py-2 !px-5 text-sm text-white" style={{ background: color }}>{tr("use_template")}</Link>
+                  <Link to="/templates/$slug/new" params={{ slug: t.slug }} className="bubble-btn !py-2 !px-5 text-sm text-white" style={{ background: color }}>{tr("use_template")}</Link>
                 ) : (
                   <span className="inline-block px-4 py-2 rounded-full bg-muted text-muted-foreground font-bold text-sm">{tr("coming_soon")}</span>
                 )}
