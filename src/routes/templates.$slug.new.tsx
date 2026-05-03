@@ -22,12 +22,13 @@ function NewFromTemplate() {
   const [busy, setBusy] = useState(false);
 
   // builder state
-  const [quizQs, setQuizQs] = useState<{ q: string; options: string[]; correct: number }[]>([{ q: "", options: ["", ""], correct: 0 }]);
+  const [quizQs, setQuizQs] = useState<{ q: string; options: string[]; correct: number }[]>([{ q: "", options: ["", "", "", ""], correct: 0 }]);
   const [blanksList, setBlanksList] = useState<{ text: string; answers: string[] }[]>([{ text: "عاصمة مصر هي ___ .", answers: ["القاهرة"] }]);
   const [pairs, setPairs] = useState<{ a: string; b: string }[]>([{ a: "", b: "" }, { a: "", b: "" }]);
   const [wheelItems, setWheelItems] = useState<string[]>(["", "", ""]);
-  const [puzzleWords, setPuzzleWords] = useState<string[]>(["", ""]);
-  const [drawPrompt, setDrawPrompt] = useState("");
+  const [puzzleImage, setPuzzleImage] = useState<File | null>(null);
+  const [puzzleGrid, setPuzzleGrid] = useState(3);
+  const [colorImage, setColorImage] = useState<File | null>(null);
 
   if (!user) {
     return (
