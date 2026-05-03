@@ -206,7 +206,7 @@ export function generateColoring(c: ColoringConfig): string {
   return baseHead(c.title) + `
   <style>
     body{padding:0!important;display:block!important;background:#F0F2F8!important}
-    .card{display:none!important}
+    .card{display:contents!important;max-width:none!important;width:auto!important;padding:0!important;background:transparent!important;box-shadow:none!important;border-radius:0!important}
     .color-app{position:fixed;inset:0;display:grid;grid-template-columns:280px 1fr;gap:0;background:#F0F2F8}
     .color-app header{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#fff;border-bottom:1px solid #e7e9f1;box-shadow:0 1px 4px rgba(0,0,0,.04);z-index:3}
     .color-app header h1{font-size:1.1rem;color:#9A73E8;margin:0}
