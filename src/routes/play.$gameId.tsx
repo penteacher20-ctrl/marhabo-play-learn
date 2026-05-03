@@ -67,7 +67,63 @@ function PlayPage() {
             }
             // Inject auto-resize helper that fires resize on orientation change
             const resizeScript = `<script>(function(){function fire(){try{window.dispatchEvent(new Event('resize'));}catch(e){}}window.addEventListener('orientationchange',function(){setTimeout(fire,150);});window.addEventListener('message',function(e){if(e&&e.data==='lov-fit')fire();});setTimeout(fire,200);})();</script>`;
-            txt = txt.includes("</body>") ? txt.replace("</body>", `${resizeScript}</body>`) : txt + resizeScript;
+            // Celebration: confetti + sound + overlay when game completes (detects 🎉 anywhere in DOM)
+            const celebrateScript = `<style>
+@keyframes lovConfFall{0%{transform:translateY(-10vh) rotate(0)}100%{transform:translateY(110vh) rotate(720deg)}}
+@keyframes lovPop{0%{transform:scale(.3);opacity:0}60%{transform:scale(1.15);opacity:1}100%{transform:scale(1);opacity:1}}
+.lov-celebrate-overlay{position:fixed;inset:0;pointer-events:none;z-index:999999;overflow:hidden}
+.lov-confetti{position:absolute;top:-10vh;width:12px;height:18px;border-radius:2px;animation:lovConfFall linear forwards}
+.lov-celebrate-card{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#ffd166,#ef476f);color:#fff;padding:24px 36px;border-radius:24px;font-family:system-ui,sans-serif;font-weight:900;font-size:28px;box-shadow:0 20px 50px rgba(0,0,0,.35);text-align:center;animation:lovPop .6s cubic-bezier(.34,1.56,.64,1) forwards;pointer-events:auto;z-index:1000000}
+.lov-celebrate-card button{margin-top:14px;background:#fff;color:#ef476f;border:0;border-radius:999px;padding:10px 22px;font-weight:800;font-size:16px;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.15)}
+</style>
+<script>(function(){
+  var fired=false;
+  function playSound(){
+    try{
+      var Ctx=window.AudioContext||window.webkitAudioContext; if(!Ctx) return;
+      var ac=new Ctx(); var notes=[523.25,659.25,783.99,1046.5]; var t=ac.currentTime;
+      notes.forEach(function(f,i){ var o=ac.createOscillator(),g=ac.createGain(); o.type='triangle'; o.frequency.value=f; g.gain.setValueAtTime(0.0001,t+i*0.15); g.gain.exponentialRampToValueAtTime(0.25,t+i*0.15+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+i*0.15+0.4); o.connect(g); g.connect(ac.destination); o.start(t+i*0.15); o.stop(t+i*0.15+0.45); });
+    }catch(e){}
+  }
+  function confetti(){
+    var ov=document.createElement('div'); ov.className='lov-celebrate-overlay';
+    var colors=['#ef476f','#ffd166','#06d6a0','#118ab2','#8338ec','#fb5607'];
+    for(var i=0;i<140;i++){
+      var c=document.createElement('div'); c.className='lov-confetti';
+      c.style.left=(Math.random()*100)+'vw';
+      c.style.background=colors[i%colors.length];
+      c.style.animationDuration=(2.5+Math.random()*2.5)+'s';
+      c.style.animationDelay=(Math.random()*0.8)+'s';
+      c.style.transform='rotate('+(Math.random()*360)+'deg)';
+      if(Math.random()<0.3) c.style.borderRadius='50%';
+      ov.appendChild(c);
+    }
+    var card=document.createElement('div'); card.className='lov-celebrate-card';
+    card.innerHTML='<div style="font-size:54px;line-height:1">🎉</div><div>أحسنت! أكملت اللعبة</div><button type="button">العب مجدداً</button>';
+    card.querySelector('button').onclick=function(){ try{location.reload();}catch(e){} };
+    document.body.appendChild(ov); document.body.appendChild(card);
+    setTimeout(function(){ try{ov.remove();}catch(e){} }, 6000);
+  }
+  function celebrate(){ if(fired) return; fired=true; playSound(); confetti(); }
+  window.lovCelebrate=celebrate;
+  function scan(){
+    if(fired) return;
+    try{
+      var t=document.body && document.body.innerText || '';
+      if(/🎉/.test(t) || /أحسنت/.test(t) && /أكمل|نتيج/.test(t)) celebrate();
+    }catch(e){}
+  }
+  function start(){
+    scan();
+    try{
+      var mo=new MutationObserver(function(){ scan(); });
+      mo.observe(document.body,{childList:true,subtree:true,characterData:true});
+    }catch(e){}
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start); else start();
+})();</script>`;
+            const inject = `${resizeScript}${celebrateScript}`;
+            txt = txt.includes("</body>") ? txt.replace("</body>", `${inject}</body>`) : txt + inject;
             setHtml(txt);
           } catch { /* ignore */ }
         }
