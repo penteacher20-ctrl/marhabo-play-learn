@@ -6,11 +6,11 @@ import { Footer } from "@/components/Footer";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { generateQuiz, generateBlanks, generateMatching, generateWheel } from "@/lib/templates";
+import { generateQuiz, generateBlanks, generateMatching, generateWheel, generatePuzzle, generateDraw } from "@/lib/templates";
 
 export const Route = createFileRoute("/templates/$slug/new")({ component: NewFromTemplate });
 
-const SUPPORTED = ["quiz", "blanks", "matching", "wheel"];
+const SUPPORTED = ["quiz", "blanks", "matching", "wheel", "puzzle", "draw"];
 
 function NewFromTemplate() {
   const { slug } = Route.useParams();
@@ -26,6 +26,8 @@ function NewFromTemplate() {
   const [blanksList, setBlanksList] = useState<{ text: string; answers: string[] }[]>([{ text: "عاصمة مصر هي ___ .", answers: ["القاهرة"] }]);
   const [pairs, setPairs] = useState<{ a: string; b: string }[]>([{ a: "", b: "" }, { a: "", b: "" }]);
   const [wheelItems, setWheelItems] = useState<string[]>(["", "", ""]);
+  const [puzzleWords, setPuzzleWords] = useState<string[]>(["", ""]);
+  const [drawPrompt, setDrawPrompt] = useState("");
 
   if (!user) {
     return (
@@ -72,6 +74,14 @@ function NewFromTemplate() {
       if (items.length < 2) { toast.error("أضف عنصرين على الأقل"); return null; }
       return generateWheel({ title, items });
     }
+    if (slug === "puzzle") {
+      const words = puzzleWords.map(w => w.trim()).filter(w => w.length >= 2);
+      if (!words.length) { toast.error("أضف كلمة واحدة على الأقل (حرفان فأكثر)"); return null; }
+      return generatePuzzle({ title, words });
+    }
+    if (slug === "draw") {
+      return generateDraw({ title, prompt: drawPrompt.trim() || undefined });
+    }
     return null;
   };
 
@@ -110,6 +120,12 @@ function NewFromTemplate() {
           {slug === "blanks" && <BlanksBuilder list={blanksList} setList={setBlanksList} />}
           {slug === "matching" && <MatchingBuilder pairs={pairs} setPairs={setPairs} />}
           {slug === "wheel" && <WheelBuilder items={wheelItems} setItems={setWheelItems} />}
+          {slug === "puzzle" && <PuzzleBuilder words={puzzleWords} setWords={setPuzzleWords} />}
+          {slug === "draw" && (
+            <Field label="موضوع الرسم (اختياري)">
+              <input value={drawPrompt} onChange={(e) => setDrawPrompt(e.target.value)} placeholder="مثال: ارسم منزلك المفضل" className="input" />
+            </Field>
+          )}
 
           <div className="flex items-center justify-between bg-secondary/50 rounded-2xl px-4 py-3">
             <span className="font-bold">{tr("privacy")}</span>
@@ -220,6 +236,22 @@ function WheelBuilder({ items, setItems }: { items: string[]; setItems: any }) {
           <div key={i} className="flex gap-2">
             <input value={it} onChange={(e) => setItems(items.map((x, k) => k === i ? e.target.value : x))} placeholder={`عنصر ${i + 1}`} className="input flex-1" />
             <button type="button" onClick={() => setItems(items.filter((_, k) => k !== i))} className="px-3 rounded-xl bg-destructive/10 text-destructive font-bold">×</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PuzzleBuilder({ words, setWords }: { words: string[]; setWords: any }) {
+  return (
+    <div>
+      <SectionHeader title="كلمات للترتيب" onAdd={() => setWords([...words, ""])} />
+      <div className="space-y-2">
+        {words.map((w, i) => (
+          <div key={i} className="flex gap-2">
+            <input value={w} onChange={(e) => setWords(words.map((x, k) => k === i ? e.target.value : x))} placeholder={`كلمة ${i + 1}`} className="input flex-1" />
+            <button type="button" onClick={() => setWords(words.filter((_, k) => k !== i))} className="px-3 rounded-xl bg-destructive/10 text-destructive font-bold">×</button>
           </div>
         ))}
       </div>

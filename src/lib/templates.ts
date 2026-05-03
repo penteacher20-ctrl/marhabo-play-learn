@@ -148,3 +148,72 @@ export function generateWheel(c: WheelConfig): string {
     };
   </script>` + tail;
 }
+
+export interface PuzzleConfig { title: string; words: string[]; }
+export function generatePuzzle(c: PuzzleConfig): string {
+  return baseHead(c.title) + `
+  <h1>${escapeHtml(c.title)}</h1>
+  <p style="margin-bottom:18px;color:#666">رتّب الحروف لتكوين الكلمة الصحيحة</p>
+  <div id="game"></div>
+  <div class="result" id="res"></div>
+  <script>
+    const W = ${JSON.stringify(c.words.filter(w => w.trim()))};
+    let i = 0, score = 0;
+    const game = document.getElementById('game'), res = document.getElementById('res');
+    function shuffle(s){ const a=s.split(''); for(let k=a.length-1;k>0;k--){const j=Math.floor(Math.random()*(k+1));[a[k],a[j]]=[a[j],a[k]];} return a.join('')===s?shuffle(s):a; }
+    function render(){
+      if(i>=W.length){ game.innerHTML='<div class="score">🎉 '+score+'/'+W.length+'</div><button class="btn" onclick="location.reload()">العب مجدداً</button>'; return; }
+      const target = W[i]; const letters = shuffle(target);
+      const slots = target.split('').map((_,k)=>'<span class="slot" data-k="'+k+'" style="display:inline-block;min-width:42px;height:50px;border-bottom:4px solid #9A73E8;margin:0 4px;font-size:1.6rem;font-weight:900;line-height:50px"></span>').join('');
+      const tiles = letters.map((l,k)=>'<button class="opt tile" data-l="'+l+'" data-k="'+k+'" style="display:inline-block;width:auto;min-width:50px;margin:4px;font-size:1.4rem">'+l+'</button>').join('');
+      game.innerHTML = '<div style="margin:18px 0;direction:ltr">'+slots+'</div><div>'+tiles+'</div><button class="btn" id="reset" style="margin-top:14px;background:#aaa">↺ مسح</button>';
+      let pos = 0; const placed = [];
+      game.querySelectorAll('.tile').forEach(t=>t.onclick=()=>{
+        if(t.disabled||pos>=target.length) return;
+        const slot = game.querySelectorAll('.slot')[pos];
+        slot.textContent = t.dataset.l; t.disabled=true; t.style.opacity=.3;
+        placed.push({tile:t,slot}); pos++;
+        if(pos===target.length){
+          const guess = Array.from(game.querySelectorAll('.slot')).map(s=>s.textContent).join('');
+          if(guess===target){ score++; res.textContent='✅ صحيح!'; setTimeout(()=>{ res.textContent=''; i++; render(); },900); }
+          else { res.textContent='❌ حاول مجدداً'; setTimeout(()=>{ res.textContent=''; i++; render(); },1200); }
+        }
+      });
+      game.querySelector('#reset').onclick = ()=>{ placed.forEach(p=>{p.tile.disabled=false;p.tile.style.opacity=1;p.slot.textContent='';}); placed.length=0; pos=0; };
+    }
+    render();
+  </script>` + tail;
+}
+
+export interface DrawConfig { title: string; prompt?: string; }
+export function generateDraw(c: DrawConfig): string {
+  return baseHead(c.title) + `
+  <h1>${escapeHtml(c.title)}</h1>
+  ${c.prompt ? '<p style="margin-bottom:14px;color:#666;font-size:1.1rem;font-weight:700">'+escapeHtml(c.prompt)+'</p>' : ''}
+  <canvas id="cv" width="560" height="380" style="background:#fff;border-radius:20px;box-shadow:inset 0 0 0 3px #F0F2F8;cursor:crosshair;max-width:100%;touch-action:none"></canvas>
+  <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center">
+    <span id="palette"></span>
+    <input type="range" id="size" min="2" max="40" value="6" style="width:120px">
+    <button class="btn" id="clear" style="background:#FF6C67">🗑️ مسح</button>
+    <button class="btn" id="save">💾 حفظ</button>
+  </div>
+  <script>
+    const colors=['#222','#9A73E8','#FF6C67','#FFCC35','#8EE870','#2FEAFF','#fff'];
+    const pal=document.getElementById('palette');
+    let color=colors[0], size=6;
+    pal.innerHTML=colors.map((c,i)=>'<button data-c="'+c+'" style="width:32px;height:32px;border-radius:50%;border:3px solid '+(i===0?'#222':'#fff')+';background:'+c+';margin:0 4px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.2)"></button>').join('');
+    pal.querySelectorAll('button').forEach(b=>b.onclick=()=>{ color=b.dataset.c; pal.querySelectorAll('button').forEach(x=>x.style.borderColor='#fff'); b.style.borderColor='#222'; });
+    document.getElementById('size').oninput=e=>size=+e.target.value;
+    const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+    ctx.lineCap='round';ctx.lineJoin='round';
+    let drawing=false,lx=0,ly=0;
+    function pos(e){ const r=cv.getBoundingClientRect(); const t=e.touches?e.touches[0]:e; return {x:(t.clientX-r.left)*cv.width/r.width,y:(t.clientY-r.top)*cv.height/r.height}; }
+    function down(e){drawing=true;const p=pos(e);lx=p.x;ly=p.y;e.preventDefault();}
+    function move(e){if(!drawing)return;const p=pos(e);ctx.strokeStyle=color;ctx.lineWidth=size;ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(p.x,p.y);ctx.stroke();lx=p.x;ly=p.y;e.preventDefault();}
+    function up(){drawing=false;}
+    cv.addEventListener('mousedown',down);cv.addEventListener('mousemove',move);window.addEventListener('mouseup',up);
+    cv.addEventListener('touchstart',down);cv.addEventListener('touchmove',move);window.addEventListener('touchend',up);
+    document.getElementById('clear').onclick=()=>ctx.clearRect(0,0,cv.width,cv.height);
+    document.getElementById('save').onclick=()=>{ const a=document.createElement('a'); a.download='drawing.png'; a.href=cv.toDataURL(); a.click(); };
+  </script>` + tail;
+}
