@@ -29,7 +29,11 @@ function PlayPage() {
           try {
             const res = await fetch((data as Game).file_url!);
             const txt = await res.text();
-            setHtml(txt);
+            const playableHtml = txt.replace(
+              ".card{display:none!important}",
+              ".card{display:contents!important;max-width:none!important;width:auto!important;padding:0!important;background:transparent!important;box-shadow:none!important;border-radius:0!important}",
+            );
+            setHtml(playableHtml);
           } catch { /* ignore */ }
         }
       }
