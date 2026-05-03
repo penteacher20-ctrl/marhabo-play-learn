@@ -282,33 +282,77 @@ export function generateColoring(c: ColoringConfig): string {
       ctx.putImageData(id,0,0);
     }
     function pos(e){ const r=cv.getBoundingClientRect(); const sx=cv.width/r.width, sy=cv.height/r.height; return { x:(e.clientX-r.left)*sx, y:(e.clientY-r.top)*sy }; }
-    let drawing=false,lx=0,ly=0,activeId=null;
+    function stagePos(e){ const r=stage.getBoundingClientRect(); return { x:e.clientX-r.left, y:e.clientY-r.top }; }
+    let drawing=false, drawId=null;
     let sx0=0,sy0=0,smooth=0.55,pts=[];
     const smI=document.getElementById('smooth'), smV=document.getElementById('smoothV');
     smI.oninput=()=>{ smooth=+smI.value/100; smV.textContent=smI.value; };
-    function drawSegment(){ // quadratic curve through last 3 smoothed points
-      const n=pts.length; if(n<2) return;
-      ctx.beginPath();
+    function drawSegment(){ const n=pts.length; if(n<2) return; ctx.beginPath();
       if(n===2){ ctx.moveTo(pts[0].x,pts[0].y); ctx.lineTo(pts[1].x,pts[1].y); }
       else { const a=pts[n-3],b=pts[n-2],c=pts[n-1]; const m1={x:(a.x+b.x)/2,y:(a.y+b.y)/2}, m2={x:(b.x+c.x)/2,y:(b.y+c.y)/2}; ctx.moveTo(m1.x,m1.y); ctx.quadraticCurveTo(b.x,b.y,m2.x,m2.y); }
       ctx.stroke();
     }
-    function addPoint(x,y){ // EMA filter then push
-      const a=1-smooth; sx0=sx0+(x-sx0)*a; sy0=sy0+(y-sy0)*a;
+    function addPoint(x,y){ const a=1-smooth; sx0=sx0+(x-sx0)*a; sy0=sy0+(y-sy0)*a;
       const last=pts[pts.length-1]; if(last && Math.hypot(sx0-last.x,sy0-last.y)<0.5) return;
       pts.push({x:sx0,y:sy0}); drawSegment();
     }
-    function down(e){ if(activeId!==null) return; if(e.pointerType==='touch'&&e.isPrimary===false) return; const p=pos(e); if(tool==='fill'){ fill(Math.floor(p.x),Math.floor(p.y),hex(color)); pushHistory(); return; } activeId=e.pointerId; try{ cv.setPointerCapture(e.pointerId); }catch(_){} drawing=true; sx0=p.x; sy0=p.y; pts=[{x:p.x,y:p.y}]; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle=tool==='eraser'?'#ffffff':color; ctx.lineWidth=size; ctx.beginPath(); ctx.arc(p.x,p.y,size/2,0,Math.PI*2); ctx.fillStyle=ctx.strokeStyle; ctx.fill(); e.preventDefault(); }
-    function move(e){ if(!drawing||e.pointerId!==activeId) return; const evs=(e.getCoalescedEvents&&e.getCoalescedEvents().length)?e.getCoalescedEvents():[e]; for(const ev of evs){ const p=pos(ev); addPoint(p.x,p.y); } e.preventDefault(); }
-    function up(e){ if(e&&e.pointerId!==activeId) return; if(drawing){ // finalize tail
-        if(pts.length>=2){ const a=pts[pts.length-2],b=pts[pts.length-1]; ctx.beginPath(); const m={x:(a.x+b.x)/2,y:(a.y+b.y)/2}; ctx.moveTo(m.x,m.y); ctx.quadraticCurveTo(b.x,b.y,b.x,b.y); ctx.stroke(); }
-        drawing=false; pts=[]; pushHistory();
-      } activeId=null; }
-    cv.style.touchAction='none';
-    cv.addEventListener('pointerdown',down);
-    cv.addEventListener('pointermove',move);
-    cv.addEventListener('pointerup',up);
-    cv.addEventListener('pointercancel',up);
+    function endStroke(){ if(!drawing) return; if(pts.length>=2){ const a=pts[pts.length-2],b=pts[pts.length-1]; ctx.beginPath(); const m={x:(a.x+b.x)/2,y:(a.y+b.y)/2}; ctx.moveTo(m.x,m.y); ctx.quadraticCurveTo(b.x,b.y,b.x,b.y); ctx.stroke(); } drawing=false; pts=[]; pushHistory(); drawId=null; }
+
+    // Multi-touch state
+    const pointers=new Map(); // id -> {sx,sy} stage coords
+    let gesture=null; // {startDist, startScale, startTx, startTy, startMid}
+
+    function down(e){
+      pointers.set(e.pointerId, stagePos(e));
+      try{ stage.setPointerCapture(e.pointerId); }catch(_){}
+      e.preventDefault();
+      if(pointers.size===1){
+        if(tool==='fill'){ const p=pos(e); fill(Math.floor(p.x),Math.floor(p.y),hex(color)); pushHistory(); return; }
+        const p=pos(e); drawId=e.pointerId; drawing=true; sx0=p.x; sy0=p.y; pts=[{x:p.x,y:p.y}];
+        ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle=tool==='eraser'?'#ffffff':color; ctx.lineWidth=size;
+        ctx.beginPath(); ctx.arc(p.x,p.y,size/2,0,Math.PI*2); ctx.fillStyle=ctx.strokeStyle; ctx.fill();
+      } else if(pointers.size===2){
+        // cancel in-flight stroke (revert via history) and switch to gesture
+        if(drawing){ drawing=false; pts=[]; drawId=null;
+          const last=history[history.length-1]; if(last) ctx.putImageData(last,0,0);
+        }
+        const [a,b]=[...pointers.values()];
+        gesture={ startDist:Math.hypot(a.x-b.x,a.y-b.y), startScale:scale, startTx:tx, startTy:ty,
+          startMid:{x:(a.x+b.x)/2,y:(a.y+b.y)/2}, worldMid:{x:((a.x+b.x)/2-tx)/scale, y:((a.y+b.y)/2-ty)/scale} };
+      }
+    }
+    function move(e){
+      if(!pointers.has(e.pointerId)) return;
+      pointers.set(e.pointerId, stagePos(e));
+      e.preventDefault();
+      if(gesture && pointers.size>=2){
+        const [a,b]=[...pointers.values()];
+        const d=Math.hypot(a.x-b.x,a.y-b.y); const f=d/gesture.startDist;
+        scale=Math.max(0.2,Math.min(8, gesture.startScale*f));
+        const mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
+        tx=mid.x - gesture.worldMid.x*scale;
+        ty=mid.y - gesture.worldMid.y*scale;
+        applyXf();
+        return;
+      }
+      if(drawing && e.pointerId===drawId){
+        const evs=(e.getCoalescedEvents&&e.getCoalescedEvents().length)?e.getCoalescedEvents():[e];
+        for(const ev of evs){ const p=pos(ev); addPoint(p.x,p.y); }
+      }
+    }
+    function up(e){
+      pointers.delete(e.pointerId);
+      try{ stage.releasePointerCapture(e.pointerId); }catch(_){}
+      if(pointers.size<2) gesture=null;
+      if(e.pointerId===drawId) endStroke();
+    }
+    stage.addEventListener('pointerdown',down);
+    stage.addEventListener('pointermove',move);
+    stage.addEventListener('pointerup',up);
+    stage.addEventListener('pointercancel',up);
+    stage.addEventListener('pointerleave',up);
+    stage.addEventListener('wheel',e=>{ e.preventDefault(); const p=stagePos(e); zoomAt(p.x,p.y, e.deltaY<0?1.1:1/1.1); },{passive:false});
+
 
     cv.addEventListener('pointerleave',e=>{ if(drawing&&e.pointerId===activeId){ /* keep drawing via capture */ } });
 
