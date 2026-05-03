@@ -156,171 +156,230 @@ export interface PuzzleConfig { title: string; imageUrl: string; rows: number; c
 export function generatePuzzle(c: PuzzleConfig): string {
   return baseHead(c.title) + `
   <style>
-    .puzzle-wrap{display:flex;flex-wrap:wrap;gap:18px;justify-content:center;align-items:flex-start}
-    .puzzle-side{display:flex;flex-direction:column;align-items:center;gap:8px}
-    .puzzle-side .ref{width:160px;height:160px;border-radius:14px;background:#fff;border:3px solid #9A73E8;box-shadow:0 6px 16px rgba(154,115,232,.25);object-fit:cover}
-    .puzzle-side .ref-label{font-size:.8rem;color:#9A73E8;font-weight:800}
-    .puzzle-stage{position:relative;background:#F0F2F8;border-radius:20px;border:3px dashed #9A73E8aa}
-    .ptray{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:14px;padding:14px;background:#F0F2F8;border-radius:20px;min-height:90px}
-    .pp{position:absolute;cursor:grab;filter:drop-shadow(0 4px 6px rgba(0,0,0,.25));transition:filter .15s}
-    .pp.placed{filter:none;cursor:default;pointer-events:none}
-    .pp.tray-piece{position:relative}
-    @media(max-width:520px){.puzzle-side .ref{width:120px;height:120px}}
+    body{padding:0!important;background:linear-gradient(135deg,#fef3ff,#eef2ff)!important}
+    .card{display:contents!important}
+    .pz-app{min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:14px;gap:12px;box-sizing:border-box}
+    .pz-head{width:100%;max-width:1100px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+    .pz-head h1{margin:0;font-size:clamp(1.1rem,2.4vw,1.6rem);color:#7a4fd6}
+    .pz-head .hint{font-size:.85rem;color:#666}
+    .pz-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .pz-toolbar button{border:none;border-radius:999px;padding:8px 16px;font-weight:800;cursor:pointer;color:#fff;background:linear-gradient(135deg,#9A73E8,#6D5BFF);box-shadow:0 4px 12px rgba(109,91,255,.3)}
+    .pz-toolbar select{border:2px solid #d8cdf6;border-radius:999px;padding:6px 12px;background:#fff;font-weight:700;color:#7a4fd6}
+    .pz-main{display:grid;grid-template-columns:auto 220px;gap:18px;align-items:start;width:100%;max-width:1100px}
+    @media(max-width:820px){.pz-main{grid-template-columns:1fr}}
+    .pz-board-wrap{display:flex;flex-direction:column;gap:14px;align-items:center;min-width:0}
+    #board{position:relative;background:repeating-linear-gradient(45deg,#f5f0ff,#f5f0ff 10px,#ece4ff 10px,#ece4ff 20px);border-radius:18px;border:3px dashed #b9a4f0;box-shadow:inset 0 4px 14px rgba(0,0,0,.05);touch-action:none}
+    #tray{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;padding:14px;background:#fff;border-radius:18px;border:2px solid #e6dffb;min-height:120px;width:100%;max-width:520px;box-sizing:border-box}
+    .pz-side{display:flex;flex-direction:column;align-items:center;gap:10px;background:#fff;border-radius:18px;padding:14px;border:2px solid #e6dffb;position:sticky;top:14px}
+    .pz-side .ref-label{font-size:.85rem;color:#7a4fd6;font-weight:800}
+    .pz-side .ref{width:190px;height:190px;border-radius:14px;object-fit:cover;background:#f5f0ff;border:2px solid #d8cdf6}
+    .pz-side .progress{font-size:.85rem;color:#666;font-weight:700}
+    .pz-side .bar{width:100%;height:8px;background:#eee;border-radius:99px;overflow:hidden}
+    .pz-side .bar>i{display:block;height:100%;width:0;background:linear-gradient(90deg,#9A73E8,#6D5BFF);transition:width .3s}
+    .pp{cursor:grab;user-select:none;-webkit-user-drag:none;touch-action:none;filter:drop-shadow(0 3px 4px rgba(0,0,0,.25));transition:transform .1s}
+    .pp:active{cursor:grabbing;transform:scale(1.05)}
+    .pp.placed{cursor:default;filter:none;pointer-events:none}
+    .pz-result{font-size:1.4rem;font-weight:900;color:#7a4fd6;text-align:center;min-height:1.5em}
   </style>
-  <h1>${escapeHtml(c.title)}</h1>
-  <p style="margin-bottom:14px;color:#666">اسحب القطع لمكانها الصحيح</p>
-  <div class="puzzle-wrap">
-    <div class="puzzle-side">
-      <span class="ref-label">الصورة المرجعية</span>
-      <img id="refImg" class="ref" src="${c.imageUrl}" alt="reference">
+  <div class="pz-app">
+    <div class="pz-head">
+      <h1>🧩 ${escapeHtml(c.title)}</h1>
+      <div class="pz-toolbar">
+        <label style="font-size:.8rem;color:#666;font-weight:700">الصعوبة:</label>
+        <select id="difficulty">
+          <option value="3">سهل (3×3)</option>
+          <option value="4" selected>متوسط (4×4)</option>
+          <option value="5">صعب (5×5)</option>
+          <option value="6">خبير (6×6)</option>
+        </select>
+        <button id="reset">↺ خلط جديد</button>
+      </div>
     </div>
-    <div>
-      <div id="board" class="puzzle-stage"></div>
-      <div id="tray" class="ptray"></div>
+    <div class="pz-main">
+      <div class="pz-board-wrap">
+        <div id="board"></div>
+        <div id="tray"></div>
+        <div class="pz-result" id="res"></div>
+      </div>
+      <aside class="pz-side">
+        <span class="ref-label">📷 الصورة المرجعية</span>
+        <img id="refImg" class="ref" src="${c.imageUrl}" alt="reference" crossorigin="anonymous">
+        <div class="progress"><span id="progTxt">0 / 0</span></div>
+        <div class="bar"><i id="progBar"></i></div>
+      </aside>
     </div>
   </div>
-  <div class="result" id="res"></div>
-  <button class="btn" id="reset" style="margin-top:10px;background:#aaa">↺ خلط</button>
   <script>
     const SRC = ${JSON.stringify(c.imageUrl)};
-    const ROWS = ${c.rows}, COLS = ${c.cols};
-    const SIZE = Math.min(440, window.innerWidth - 60);
-    const PW = SIZE/COLS, PH = SIZE/ROWS;
-    const KNOB = Math.min(PW,PH)*0.22; // tab radius
-    const PAD = KNOB + 4; // svg padding around piece for tabs
-    const board = document.getElementById('board'), tray = document.getElementById('tray'), res = document.getElementById('res');
-    board.style.width = SIZE+'px'; board.style.height = SIZE+'px';
+    let ROWS=${c.rows||4}, COLS=${c.cols||4};
+    const board=document.getElementById('board'), tray=document.getElementById('tray'), res=document.getElementById('res');
+    const progTxt=document.getElementById('progTxt'), progBar=document.getElementById('progBar');
+    const diffSel=document.getElementById('difficulty');
+    diffSel.value=String(ROWS);
 
-    // edges grid: horizontal edges hEdge[r][c] for r in 0..ROWS, vertical vEdge[r][c] for c in 0..COLS
-    // value: 0 = flat, 1 = tab going down/right, -1 = tab going up/left
+    let SIZE=400, PW=0, PH=0, KNOB=0, PAD=0;
     let hEdge=[], vEdge=[];
+    let imgCanvas=null, imgReady=false;
+
+    function calcSize(){
+      const wrap=board.parentNode;
+      const avail=Math.min(wrap.clientWidth-4, window.innerHeight*0.65, 560);
+      SIZE=Math.max(260, Math.floor(avail));
+      PW=SIZE/COLS; PH=SIZE/ROWS;
+      KNOB=Math.min(PW,PH)*0.18;
+      PAD=Math.ceil(KNOB+6);
+      board.style.width=SIZE+'px'; board.style.height=SIZE+'px';
+    }
+
+    function loadImage(){
+      return new Promise((resolve)=>{
+        const img=new Image();
+        img.crossOrigin='anonymous';
+        img.onload=()=>{
+          imgCanvas=document.createElement('canvas');
+          imgCanvas.width=img.naturalWidth; imgCanvas.height=img.naturalHeight;
+          imgCanvas.getContext('2d').drawImage(img,0,0);
+          imgReady=true; resolve(true);
+        };
+        img.onerror=()=>resolve(false);
+        img.src=SRC;
+      });
+    }
+
     function genEdges(){
       hEdge=[]; vEdge=[];
-      for(let r=0;r<=ROWS;r++){ const row=[]; for(let c=0;c<COLS;c++) row.push(r===0||r===ROWS?0:(Math.random()<0.5?1:-1)); hEdge.push(row); }
-      for(let r=0;r<ROWS;r++){ const row=[]; for(let c=0;c<=COLS;c++) row.push(c===0||c===COLS?0:(Math.random()<0.5?1:-1)); vEdge.push(row); }
+      for(let r=0;r<=ROWS;r++){const row=[];for(let c=0;c<COLS;c++)row.push(r===0||r===ROWS?0:(Math.random()<0.5?1:-1));hEdge.push(row);}
+      for(let r=0;r<ROWS;r++){const row=[];for(let c=0;c<=COLS;c++)row.push(c===0||c===COLS?0:(Math.random()<0.5?1:-1));vEdge.push(row);}
     }
 
-    // Build an SVG path for a piece at (r,c). Coordinates relative to piece bbox with PAD offset.
     function piecePath(r,c){
-      const w=PW, h=PH, k=KNOB;
-      const top=hEdge[r][c], right=vEdge[r][c+1], bottom=hEdge[r+1][c], left=vEdge[r][c];
-      const x0=PAD, y0=PAD; // top-left of piece body
+      const w=PW,h=PH,k=KNOB;
+      const top=hEdge[r][c],right=vEdge[r][c+1],bottom=hEdge[r+1][c],left=vEdge[r][c];
+      const x0=PAD,y0=PAD;
       let d='M '+x0+' '+y0;
-      // top edge: left->right
-      if(top===0){ d+=' L '+(x0+w)+' '+y0; }
-      else { const mid=x0+w/2, dir=top; // dir=1 tab goes UP (out), -1 goes DOWN (in)
-        d+=' L '+(mid-k)+' '+y0;
-        d+=' C '+(mid-k)+' '+(y0-2*k*dir)+' '+(mid+k)+' '+(y0-2*k*dir)+' '+(mid+k)+' '+y0;
-        d+=' L '+(x0+w)+' '+y0;
-      }
-      // right edge: top->bottom
-      if(right===0){ d+=' L '+(x0+w)+' '+(y0+h); }
-      else { const mid=y0+h/2, dir=right; // dir=1 tab goes RIGHT (out)
-        d+=' L '+(x0+w)+' '+(mid-k);
-        d+=' C '+(x0+w+2*k*dir)+' '+(mid-k)+' '+(x0+w+2*k*dir)+' '+(mid+k)+' '+(x0+w)+' '+(mid+k);
-        d+=' L '+(x0+w)+' '+(y0+h);
-      }
-      // bottom edge: right->left
-      if(bottom===0){ d+=' L '+x0+' '+(y0+h); }
-      else { const mid=x0+w/2, dir=bottom; // dir=1 tab goes DOWN (out)
-        d+=' L '+(mid+k)+' '+(y0+h);
-        d+=' C '+(mid+k)+' '+(y0+h+2*k*dir)+' '+(mid-k)+' '+(y0+h+2*k*dir)+' '+(mid-k)+' '+(y0+h);
-        d+=' L '+x0+' '+(y0+h);
-      }
-      // left edge: bottom->top
-      if(left===0){ d+=' L '+x0+' '+y0; }
-      else { const mid=y0+h/2, dir=left; // dir=1 tab goes LEFT (out)
-        d+=' L '+x0+' '+(mid+k);
-        d+=' C '+(x0-2*k*dir)+' '+(mid+k)+' '+(x0-2*k*dir)+' '+(mid-k)+' '+x0+' '+(mid-k);
-        d+=' L '+x0+' '+y0;
-      }
-      d+=' Z';
-      return d;
+      if(top===0){d+=' L '+(x0+w)+' '+y0;}
+      else{const m=x0+w/2,dir=top;d+=' L '+(m-k)+' '+y0+' C '+(m-k)+' '+(y0-2*k*dir)+' '+(m+k)+' '+(y0-2*k*dir)+' '+(m+k)+' '+y0+' L '+(x0+w)+' '+y0;}
+      if(right===0){d+=' L '+(x0+w)+' '+(y0+h);}
+      else{const m=y0+h/2,dir=right;d+=' L '+(x0+w)+' '+(m-k)+' C '+(x0+w+2*k*dir)+' '+(m-k)+' '+(x0+w+2*k*dir)+' '+(m+k)+' '+(x0+w)+' '+(m+k)+' L '+(x0+w)+' '+(y0+h);}
+      if(bottom===0){d+=' L '+x0+' '+(y0+h);}
+      else{const m=x0+w/2,dir=bottom;d+=' L '+(m+k)+' '+(y0+h)+' C '+(m+k)+' '+(y0+h+2*k*dir)+' '+(m-k)+' '+(y0+h+2*k*dir)+' '+(m-k)+' '+(y0+h)+' L '+x0+' '+(y0+h);}
+      if(left===0){d+=' L '+x0+' '+y0;}
+      else{const m=y0+h/2,dir=left;d+=' L '+x0+' '+(m+k)+' C '+(x0-2*k*dir)+' '+(m+k)+' '+(x0-2*k*dir)+' '+(m-k)+' '+x0+' '+(m-k)+' L '+x0+' '+y0;}
+      return d+' Z';
     }
 
-    function makePieceSVG(r,c){
-      const w=PW+PAD*2, h=PH+PAD*2;
-      const id='clip_'+r+'_'+c+'_'+Math.random().toString(36).slice(2,7);
-      const d=piecePath(r,c);
-      // image is full puzzle, positioned so this piece's section aligns
-      const imgX = -c*PW + PAD;
-      const imgY = -r*PH + PAD;
-      const svg='<svg class="pp" xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'" data-idx="'+(r*COLS+c)+'">'+
-        '<defs><clipPath id="'+id+'"><path d="'+d+'"/></clipPath></defs>'+
-        '<image href="'+SRC+'" x="'+imgX+'" y="'+imgY+'" width="'+(PW*COLS)+'" height="'+(PH*ROWS)+'" preserveAspectRatio="none" clip-path="url(#'+id+')"/>'+
-        '<path d="'+d+'" fill="none" stroke="rgba(0,0,0,.45)" stroke-width="1.2"/>'+
-        '</svg>';
-      return svg;
+    // Render piece to canvas (avoids SVG image CORS taint issues for export, gives crisp result)
+    function makePieceCanvas(r,c){
+      const W=PW+PAD*2, H=PH+PAD*2;
+      const cv=document.createElement('canvas');
+      const dpr=window.devicePixelRatio||1;
+      cv.width=W*dpr; cv.height=H*dpr;
+      cv.style.width=W+'px'; cv.style.height=H+'px';
+      const ctx=cv.getContext('2d'); ctx.scale(dpr,dpr);
+      // Build path
+      const p=new Path2D(piecePath(r,c));
+      ctx.save();
+      ctx.clip(p);
+      if(imgReady){
+        // map full image into the SIZE×SIZE puzzle area; this piece occupies (c*PW, r*PH)
+        const sx=imgCanvas.width, sy=imgCanvas.height;
+        // dest top-left of full image relative to canvas: shift so piece (r,c) lands at (PAD,PAD)
+        const dx=PAD - c*PW;
+        const dy=PAD - r*PH;
+        ctx.drawImage(imgCanvas, 0,0, sx,sy, dx, dy, SIZE, SIZE);
+      } else {
+        ctx.fillStyle='#c9b8f0'; ctx.fillRect(0,0,W,H);
+      }
+      ctx.restore();
+      // outline
+      ctx.lineWidth=1.4; ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.stroke(p);
+      ctx.lineWidth=.6; ctx.strokeStyle='rgba(255,255,255,.5)'; ctx.stroke(p);
+      cv.className='pp';
+      cv.dataset.idx=r*COLS+c;
+      cv.dataset.r=r; cv.dataset.c=c;
+      return cv;
     }
 
-    let placed=0;
-    function build(){
-      placed=0; res.textContent=''; board.innerHTML=''; tray.innerHTML='';
+    let placed=0, total=0, pieces=[];
+    function updateProgress(){
+      progTxt.textContent=placed+' / '+total;
+      progBar.style.width=(total?placed/total*100:0)+'%';
+    }
+
+    async function build(){
+      ROWS=COLS=parseInt(diffSel.value,10)||4;
+      total=ROWS*COLS; placed=0; res.textContent=''; updateProgress();
+      board.innerHTML=''; tray.innerHTML=''; pieces=[];
+      calcSize();
+      if(!imgReady) await loadImage();
       genEdges();
-      // slot outlines on board
+      // slots
       for(let r=0;r<ROWS;r++) for(let cc=0;cc<COLS;cc++){
         const slot=document.createElement('div');
-        slot.className='slot'; slot.dataset.idx=r*COLS+cc;
-        slot.style.cssText='position:absolute;left:'+(cc*PW)+'px;top:'+(r*PH)+'px;width:'+PW+'px;height:'+PH+'px;border:1px dashed #9A73E855;box-sizing:border-box;border-radius:4px';
+        slot.dataset.idx=r*COLS+cc;
+        slot.style.cssText='position:absolute;left:'+(cc*PW)+'px;top:'+(r*PH)+'px;width:'+PW+'px;height:'+PH+'px;border:1px dashed rgba(154,115,232,.35);box-sizing:border-box';
         board.appendChild(slot);
       }
-      const list=[]; for(let r=0;r<ROWS;r++) for(let cc=0;cc<COLS;cc++) list.push({r,c:cc,idx:r*COLS+cc});
+      const list=[]; for(let r=0;r<ROWS;r++) for(let cc=0;cc<COLS;cc++) list.push({r,c:cc});
       list.sort(()=>Math.random()-0.5);
       list.forEach(p=>{
-        const wrap=document.createElement('div');
-        wrap.innerHTML=makePieceSVG(p.r,p.c);
-        const el=wrap.firstChild;
-        el.classList.add('tray-piece');
-        el.style.margin='-'+PAD+'px';
+        const el=makePieceCanvas(p.r,p.c);
+        el.style.margin=(-PAD)+'px';
         attachDrag(el,p);
         tray.appendChild(el);
+        pieces.push(el);
       });
     }
 
     function attachDrag(el,p){
-      let dragging=false, ox=0, oy=0, origParent=el.parentNode;
-      const start=(cx,cy)=>{
+      let dragging=false, ox=0, oy=0;
+      const W=PW+PAD*2, H=PH+PAD*2;
+      const start=(cx,cy,e)=>{
         if(el.classList.contains('placed')) return;
         const r=el.getBoundingClientRect();
         ox=cx-r.left; oy=cy-r.top;
-        // move to body for free dragging
         document.body.appendChild(el);
-        el.style.position='fixed'; el.style.left=(cx-ox)+'px'; el.style.top=(cy-oy)+'px';
-        el.style.zIndex=999; el.style.cursor='grabbing';
+        el.style.margin='0';
+        el.style.position='fixed';
+        el.style.left=(cx-ox)+'px'; el.style.top=(cy-oy)+'px';
+        el.style.zIndex='9999';
         dragging=true;
+        try{el.setPointerCapture(e.pointerId);}catch(_){}
       };
-      const move=(cx,cy)=>{ if(!dragging) return; el.style.left=(cx-ox)+'px'; el.style.top=(cy-oy)+'px'; };
+      const move=(cx,cy)=>{ if(!dragging)return; el.style.left=(cx-ox)+'px'; el.style.top=(cy-oy)+'px'; };
       const end=(cx,cy)=>{
-        if(!dragging) return; dragging=false; el.style.cursor='grab';
-        // find target slot
+        if(!dragging) return; dragging=false;
         const br=board.getBoundingClientRect();
-        const slot=board.querySelector('.slot[data-idx="'+p.idx+'"]');
-        const sr=slot.getBoundingClientRect();
-        const dx=Math.abs((cx-ox)+(PW+PAD*2)/2 - (sr.left+sr.width/2));
-        const dy=Math.abs((cy-oy)+(PH+PAD*2)/2 - (sr.top+sr.height/2));
-        if(dx<PW*0.4 && dy<PH*0.4){
-          // snap into board
-          board.appendChild(el);
-          el.style.position='absolute';
-          el.style.left=(p.c*PW - PAD)+'px';
-          el.style.top=(p.r*PH - PAD)+'px';
-          el.style.zIndex=10;
-          el.classList.add('placed');
-          placed++;
-          if(placed===ROWS*COLS){ res.textContent='🎉 أحسنت!'; }
-        } else {
-          // back to tray
-          tray.appendChild(el);
-          el.style.position='relative'; el.style.left=''; el.style.top=''; el.style.zIndex='';
+        // Center of piece body (not bbox)
+        const px=cx-ox+PAD+PW/2, py=cy-oy+PAD+PH/2;
+        const tx=px-br.left, ty=py-br.top;
+        if(tx>0&&tx<SIZE&&ty>0&&ty<SIZE){
+          const targetC=Math.floor(tx/PW), targetR=Math.floor(ty/PH);
+          if(targetR===p.r && targetC===p.c){
+            board.appendChild(el);
+            el.style.position='absolute';
+            el.style.left=(p.c*PW - PAD)+'px';
+            el.style.top=(p.r*PH - PAD)+'px';
+            el.style.zIndex='10';
+            el.classList.add('placed');
+            placed++; updateProgress();
+            if(placed===total){ res.textContent='🎉 أحسنت! أكملت اللغز'; }
+            return;
+          }
         }
+        // back to tray
+        tray.appendChild(el);
+        el.style.position=''; el.style.left=''; el.style.top=''; el.style.zIndex=''; el.style.margin=(-PAD)+'px';
       };
-      el.addEventListener('pointerdown',e=>{ e.preventDefault(); el.setPointerCapture(e.pointerId); start(e.clientX,e.clientY); });
-      el.addEventListener('pointermove',e=>{ if(dragging){ e.preventDefault(); move(e.clientX,e.clientY);} });
-      el.addEventListener('pointerup',e=>{ end(e.clientX,e.clientY); });
-      el.addEventListener('pointercancel',e=>{ end(e.clientX,e.clientY); });
+      el.addEventListener('pointerdown',e=>{e.preventDefault();start(e.clientX,e.clientY,e);});
+      el.addEventListener('pointermove',e=>{if(dragging){e.preventDefault();move(e.clientX,e.clientY);}});
+      el.addEventListener('pointerup',e=>end(e.clientX,e.clientY));
+      el.addEventListener('pointercancel',e=>end(e.clientX,e.clientY));
     }
 
     document.getElementById('reset').onclick=build;
+    diffSel.onchange=build;
+    window.addEventListener('resize',()=>{ /* keep current pieces; only rebuild on user reset */ });
     build();
   </script>` + tail;
 }
