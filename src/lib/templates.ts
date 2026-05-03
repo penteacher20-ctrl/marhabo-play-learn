@@ -168,7 +168,7 @@ export function generatePuzzle(c: PuzzleConfig): string {
     .pz-main{display:grid;grid-template-columns:auto 220px;gap:18px;align-items:start;width:100%;max-width:1100px}
     @media(max-width:820px){.pz-main{grid-template-columns:1fr}}
     .pz-board-wrap{display:flex;flex-direction:column;gap:14px;align-items:center;min-width:0}
-    #board{position:relative;background:repeating-linear-gradient(45deg,#f5f0ff,#f5f0ff 10px,#ece4ff 10px,#ece4ff 20px);border-radius:18px;border:3px dashed #b9a4f0;box-shadow:inset 0 4px 14px rgba(0,0,0,.05);touch-action:none}
+    #board{position:relative;background:#faf7ff;border-radius:18px;border:3px dashed #b9a4f0;box-shadow:inset 0 4px 14px rgba(0,0,0,.05);touch-action:none}
     #tray{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;padding:14px;background:#fff;border-radius:18px;border:2px solid #e6dffb;min-height:120px;width:100%;max-width:520px;box-sizing:border-box}
     .pz-side{display:flex;flex-direction:column;align-items:center;gap:10px;background:#fff;border-radius:18px;padding:14px;border:2px solid #e6dffb;position:sticky;top:14px}
     .pz-side .ref-label{font-size:.85rem;color:#7a4fd6;font-weight:800}
