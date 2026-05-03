@@ -127,6 +127,7 @@
   .float-anim-slow { animation: float 9s ease-in-out infinite; }
   .wiggle { animation: wiggle 4s ease-in-out infinite; }
   .glow-purple { box-shadow: 0 0 80px -10px #9A73E8aa; }
+  .mascot-flip { transition: transform 0.7s cubic-bezier(0.68, -0.55, 0.265, 1.55); transform-origin: center; will-change: transform; }
 }
 
 @keyframes float {
