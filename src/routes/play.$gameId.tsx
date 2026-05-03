@@ -15,6 +15,7 @@ function PlayPage() {
   const [game, setGame] = useState<Game | null>(null);
   const [creator, setCreator] = useState<string>("");
   const [showEmbed, setShowEmbed] = useState(false);
+  const [html, setHtml] = useState<string>("");
 
   useEffect(() => {
     (async () => {
@@ -24,6 +25,13 @@ function PlayPage() {
         await supabase.from("games").update({ play_count: (data as Game).play_count + 1 }).eq("id", gameId);
         const { data: p } = await supabase.from("profiles").select("name").eq("id", (data as Game).user_id).maybeSingle();
         if (p) setCreator((p as any).name ?? "");
+        if ((data as Game).file_url) {
+          try {
+            const res = await fetch((data as Game).file_url!);
+            const txt = await res.text();
+            setHtml(txt);
+          } catch { /* ignore */ }
+        }
       }
     })();
   }, [gameId]);
@@ -55,8 +63,10 @@ function PlayPage() {
           </div>
         )}
         <div className="card-pop flex-1 overflow-hidden p-2">
-          {game.file_url ? (
-            <iframe src={game.file_url} title={game.title} className="w-full h-full min-h-[70vh] rounded-2xl border-0" allowFullScreen />
+          {html ? (
+            <iframe srcDoc={html} title={game.title} className="w-full h-full min-h-[70vh] rounded-2xl border-0" sandbox="allow-scripts allow-same-origin allow-downloads" allowFullScreen />
+          ) : game.file_url ? (
+            <div className="grid place-items-center h-96 text-muted-foreground">جاري تحميل اللعبة...</div>
           ) : <div className="grid place-items-center h-96 text-muted-foreground">لا يوجد ملف</div>}
         </div>
       </div>
