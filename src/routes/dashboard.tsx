@@ -17,6 +17,7 @@ function Dashboard() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [games, setGames] = useState<Game[]>([]);
+  const [upgrading, setUpgrading] = useState(false);
 
   const load = () => {
     if (!user) return;
