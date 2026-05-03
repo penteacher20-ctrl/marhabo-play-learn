@@ -15,7 +15,7 @@ const SUPPORTED = ["quiz", "blanks", "matching", "wheel", "puzzle", "draw"];
 function NewFromTemplate() {
   const { slug } = Route.useParams();
   const { tr } = useI18n();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [title, setTitle] = useState("");
   const [isPublic, setIsPublic] = useState(true);
