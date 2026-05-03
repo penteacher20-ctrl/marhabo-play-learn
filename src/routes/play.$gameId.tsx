@@ -4,12 +4,18 @@ import { toast } from "sonner";
 import { Navbar } from "@/components/Navbar";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
+import { generateColoring } from "@/lib/templates";
 
 export const Route = createFileRoute("/play/$gameId")({ component: PlayPage });
 
-interface Game { id: string; title: string; description: string | null; file_url: string | null; user_id: string; play_count: number; }
+interface Game { id: string; title: string; description: string | null; type: string; file_url: string | null; user_id: string; play_count: number; }
 
 type FitMode = "auto" | "fit" | "fill" | "stretch";
+
+function extractColoringImageUrl(html: string): string | null {
+  const m = html.match(/const\s+SRC\s*=\s*("([^"]+)"|'([^']+)')/);
+  return m ? (m[2] ?? m[3] ?? null) : null;
+}
 
 function PlayPage() {
   const { gameId } = Route.useParams();
@@ -35,6 +41,11 @@ function PlayPage() {
           try {
             const res = await fetch((data as Game).file_url!);
             let txt = await res.text();
+            const isColoring = (data as Game).type === "template:draw" && /const\s+SRC\s*=/.test(txt);
+            const imageUrl = isColoring ? extractColoringImageUrl(txt) : null;
+            if (imageUrl) {
+              txt = generateColoring({ title: (data as Game).title, imageUrl });
+            }
             txt = txt.replace(
               ".card{display:none!important}",
               ".card{display:contents!important;max-width:none!important;width:auto!important;padding:0!important;background:transparent!important;box-shadow:none!important;border-radius:0!important}",

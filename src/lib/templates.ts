@@ -266,7 +266,7 @@ export function generateColoring(c: ColoringConfig): string {
       <div id="zoom" style="position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform">
         <div id="canvasWrap" style="position:relative;display:block;background:#fff;box-shadow:0 8px 30px rgba(0,0,0,.15)">
           <canvas id="bg" style="display:block;position:relative;z-index:1;pointer-events:none"></canvas>
-          <canvas id="cv" style="display:block;position:absolute;left:0;top:0;z-index:2;cursor:crosshair;touch-action:none;background:transparent"></canvas>
+          <canvas id="cv" style="display:block;position:absolute;left:0;top:0;z-index:2;cursor:crosshair;touch-action:none;background:transparent;mix-blend-mode:multiply;opacity:.86"></canvas>
         </div>
       </div>
       <div class="zoom-bar">
@@ -280,6 +280,7 @@ export function generateColoring(c: ColoringConfig): string {
     const SRC = ${JSON.stringify(c.imageUrl)};
     const colors=['#FF6C67','#FF8FBF','#FFCC35','#FF8A1F','#8EE870','#2FB46B','#2FEAFF','#3B82F6','#9A73E8','#7B4F2A','#222','#fff'];
     let color=colors[0], tool='brush', size=10;
+    const PAINT_ALPHA = 210;
     const pal=document.getElementById('palette');
     pal.innerHTML=colors.map((c,i)=>'<button data-c="'+c+'" aria-label="'+c+'" style="border-color:'+(i===0?'#222':'#fff')+';background:'+c+'"></button>').join('');
     function selectColor(c){ color=c; document.getElementById('picker').value=/^#[0-9a-f]{6}$/i.test(c)?c:'#000000'; pal.querySelectorAll('button').forEach(x=>x.style.borderColor=x.dataset.c===c?'#222':'#fff'); }
@@ -327,7 +328,7 @@ export function generateColoring(c: ColoringConfig): string {
         const p=cy*W+cx; if(visited[p]) continue; visited[p]=1;
         const i=p*4; const cs=sample(i);
         if(Math.abs(cs[0]-sr)>tol||Math.abs(cs[1]-sg)>tol||Math.abs(cs[2]-sb)>tol) continue;
-        fg[i]=tr;fg[i+1]=tg;fg[i+2]=tb;fg[i+3]=255;
+        fg[i]=tr;fg[i+1]=tg;fg[i+2]=tb;fg[i+3]=PAINT_ALPHA;
         stack.push([cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]);
       }
       ctx.putImageData(fgImg,0,0);
@@ -347,7 +348,7 @@ export function generateColoring(c: ColoringConfig): string {
       const last=pts[pts.length-1]; if(last && Math.hypot(sx0-last.x,sy0-last.y)<0.5) return;
       pts.push({x:sx0,y:sy0}); drawSegment();
     }
-    function endStroke(){ if(!drawing) return; if(pts.length>=2){ const a=pts[pts.length-2],b=pts[pts.length-1]; ctx.beginPath(); const m={x:(a.x+b.x)/2,y:(a.y+b.y)/2}; ctx.moveTo(m.x,m.y); ctx.quadraticCurveTo(b.x,b.y,b.x,b.y); ctx.stroke(); } drawing=false; pts=[]; pushHistory(); drawId=null; }
+    function endStroke(){ if(!drawing) return; if(pts.length>=2){ const a=pts[pts.length-2],b=pts[pts.length-1]; ctx.beginPath(); const m={x:(a.x+b.x)/2,y:(a.y+b.y)/2}; ctx.moveTo(m.x,m.y); ctx.quadraticCurveTo(b.x,b.y,b.x,b.y); ctx.stroke(); } ctx.globalAlpha=1; drawing=false; pts=[]; pushHistory(); drawId=null; }
 
     // Multi-touch state
     const pointers=new Map(); // id -> {sx,sy} stage coords
@@ -362,6 +363,7 @@ export function generateColoring(c: ColoringConfig): string {
         const p=pos(e); drawId=e.pointerId; drawing=true; sx0=p.x; sy0=p.y; pts=[{x:p.x,y:p.y}];
         ctx.lineCap='round'; ctx.lineJoin='round'; ctx.lineWidth=size;
         ctx.globalCompositeOperation = tool==='eraser' ? 'destination-out' : 'source-over';
+        ctx.globalAlpha = tool==='eraser' ? 1 : PAINT_ALPHA / 255;
         ctx.strokeStyle = tool==='eraser' ? 'rgba(0,0,0,1)' : color;
         ctx.fillStyle = ctx.strokeStyle;
         ctx.beginPath(); ctx.arc(p.x,p.y,size/2,0,Math.PI*2); ctx.fill();
@@ -415,7 +417,7 @@ export function generateColoring(c: ColoringConfig): string {
     document.getElementById('save').onclick=()=>{
       const out=document.createElement('canvas'); out.width=cv.width; out.height=cv.height;
       const octx=out.getContext('2d');
-      octx.drawImage(bg,0,0); octx.drawImage(cv,0,0);
+      octx.drawImage(bg,0,0); octx.globalAlpha=.86; octx.globalCompositeOperation='multiply'; octx.drawImage(cv,0,0); octx.globalAlpha=1; octx.globalCompositeOperation='source-over';
       const a=document.createElement('a'); a.download='coloring.png'; a.href=out.toDataURL(); a.click();
     };
   </script>` + tail;
