@@ -39,6 +39,22 @@ function Dashboard() {
     setGames(games.filter(g => g.id !== id));
   };
 
+  const upgradeColoring = async () => {
+    if (!user) return;
+    if (!confirm("سيتم تحديث جميع ألعاب التلوين القديمة لتتوافق مع التصميم الجديد. هل تريد المتابعة؟")) return;
+    setUpgrading(true);
+    const tId = toast.loading("جاري تحديث ألعاب التلوين...");
+    try {
+      const res = await upgradeUserColoringGames(user.id, (m) => toast.message(m, { id: tId }));
+      toast.success(`تم: ${res.upgraded}/${res.total} • تخطي: ${res.skipped} • أخطاء: ${res.errors}`, { id: tId });
+      load();
+    } catch (e: any) {
+      toast.error(e.message ?? "فشل التحديث", { id: tId });
+    } finally {
+      setUpgrading(false);
+    }
+  };
+
   const totalPlays = games.reduce((s, g) => s + g.play_count, 0);
 
   return (
