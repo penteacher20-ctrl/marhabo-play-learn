@@ -354,7 +354,7 @@ export function generateColoring(c: ColoringConfig): string {
     stage.addEventListener('wheel',e=>{ e.preventDefault(); const p=stagePos(e); zoomAt(p.x,p.y, e.deltaY<0?1.1:1/1.1); },{passive:false});
 
 
-    cv.addEventListener('pointerleave',e=>{ if(drawing&&e.pointerId===activeId){ /* keep drawing via capture */ } });
+    
 
     document.getElementById('undo').onclick=()=>{ if(history.length>1){ history.pop(); const last=history[history.length-1]; ctx.putImageData(last,0,0); } };
     document.getElementById('reset').onclick=()=>{ redraw(); history.length=0; pushHistory(); };
