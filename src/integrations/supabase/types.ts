@@ -14,7 +14,102 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      games: {
+        Row: {
+          created_at: string
+          description: string | null
+          file_url: string | null
+          id: string
+          is_public: boolean
+          play_count: number
+          thumbnail_url: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          file_url?: string | null
+          id?: string
+          is_public?: boolean
+          play_count?: number
+          thumbnail_url?: string | null
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          file_url?: string | null
+          id?: string
+          is_public?: boolean
+          play_count?: number
+          thumbnail_url?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          id: string
+          name: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          id: string
+          name?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          name?: string | null
+        }
+        Relationships: []
+      }
+      templates: {
+        Row: {
+          description_ar: string | null
+          description_en: string | null
+          icon: string | null
+          id: string
+          is_available: boolean
+          name_ar: string
+          name_en: string
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          description_ar?: string | null
+          description_en?: string | null
+          icon?: string | null
+          id?: string
+          is_available?: boolean
+          name_ar: string
+          name_en: string
+          slug: string
+          sort_order?: number
+        }
+        Update: {
+          description_ar?: string | null
+          description_en?: string | null
+          icon?: string | null
+          id?: string
+          is_available?: boolean
+          name_ar?: string
+          name_en?: string
+          slug?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
