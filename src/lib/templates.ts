@@ -250,11 +250,19 @@ export function generateColoring(c: ColoringConfig): string {
     const sz=document.getElementById('size'), szV=document.getElementById('sizeV');
     sz.oninput=()=>{ size=+sz.value; szV.textContent=size; };
     const cv=document.getElementById('cv'),ctx=cv.getContext('2d',{willReadFrequently:true});
+    const stage=document.getElementById('stage'), zoomEl=document.getElementById('zoom');
+    let scale=1, tx=0, ty=0;
+    function applyXf(){ zoomEl.style.transform='translate('+tx+'px,'+ty+'px) scale('+scale+')'; }
+    function fitToStage(){ const sw=stage.clientWidth, sh=stage.clientHeight; scale=Math.min(sw/cv.width, sh/cv.height); tx=(sw-cv.width*scale)/2; ty=(sh-cv.height*scale)/2; applyXf(); }
     const img=new Image(); img.crossOrigin='anonymous';
-    img.onload=()=>{ const max=620; const r=Math.min(1,max/img.width,max/img.height); cv.width=img.width*r; cv.height=img.height*r; redraw(); pushHistory(); };
-    img.onerror=()=>{ cv.width=620;cv.height=420; ctx.fillStyle='#fff';ctx.fillRect(0,0,cv.width,cv.height); pushHistory(); };
+    img.onload=()=>{ const max=1200; const r=Math.min(1,max/img.width,max/img.height); cv.width=img.width*r; cv.height=img.height*r; redraw(); pushHistory(); fitToStage(); };
+    img.onerror=()=>{ cv.width=1000;cv.height=700; ctx.fillStyle='#fff';ctx.fillRect(0,0,cv.width,cv.height); pushHistory(); fitToStage(); };
     img.src=SRC;
-    function redraw(){ ctx.clearRect(0,0,cv.width,cv.height); ctx.fillStyle='#fff'; ctx.fillRect(0,0,cv.width,cv.height); if(img.complete&&img.naturalWidth) ctx.drawImage(img,0,0,cv.width,cv.height); }
+    window.addEventListener('resize',()=>{ /* keep current scale */ });
+    document.getElementById('zin').onclick=()=>{ zoomAt(stage.clientWidth/2,stage.clientHeight/2,1.25); };
+    document.getElementById('zout').onclick=()=>{ zoomAt(stage.clientWidth/2,stage.clientHeight/2,1/1.25); };
+    document.getElementById('zfit').onclick=fitToStage;
+    function zoomAt(px,py,f){ const nx=(px-tx)*f+tx-(px-tx)*0+(px-(px-tx)*f-tx); /* simpler: */ const wx=(px-tx)/scale, wy=(py-ty)/scale; scale*=f; scale=Math.max(0.2,Math.min(8,scale)); tx=px-wx*scale; ty=py-wy*scale; applyXf(); }
     const history=[]; function pushHistory(){ try{ history.push(ctx.getImageData(0,0,cv.width,cv.height)); if(history.length>20)history.shift(); }catch(e){} }
     function hex(h){ if(h.length===4)h='#'+h[1]+h[1]+h[2]+h[2]+h[3]+h[3]; return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16),255]; }
     function fill(x,y,col){
