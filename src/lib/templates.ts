@@ -266,7 +266,7 @@ export function generateColoring(c: ColoringConfig): string {
       <div id="zoom" style="position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform">
         <div id="canvasWrap" style="position:relative;display:block;background:#fff;box-shadow:0 8px 30px rgba(0,0,0,.15)">
           <canvas id="bg" style="display:block;position:relative;z-index:1;pointer-events:none"></canvas>
-          <canvas id="cv" style="display:block;position:absolute;left:0;top:0;z-index:2;cursor:crosshair;touch-action:none;background:transparent"></canvas>
+          <canvas id="cv" style="display:block;position:absolute;left:0;top:0;z-index:2;cursor:crosshair;touch-action:none;background:transparent;mix-blend-mode:multiply"></canvas>
         </div>
       </div>
       <div class="zoom-bar">
@@ -415,7 +415,7 @@ export function generateColoring(c: ColoringConfig): string {
     document.getElementById('save').onclick=()=>{
       const out=document.createElement('canvas'); out.width=cv.width; out.height=cv.height;
       const octx=out.getContext('2d');
-      octx.drawImage(bg,0,0); octx.drawImage(cv,0,0);
+      octx.drawImage(bg,0,0); octx.globalCompositeOperation='multiply'; octx.drawImage(cv,0,0); octx.globalCompositeOperation='source-over';
       const a=document.createElement('a'); a.download='coloring.png'; a.href=out.toDataURL(); a.click();
     };
   </script>` + tail;
