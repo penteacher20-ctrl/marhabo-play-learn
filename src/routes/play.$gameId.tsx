@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Navbar } from "@/components/Navbar";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
-import { generateColoring } from "@/lib/templates";
+import { generateColoring, generatePuzzle } from "@/lib/templates";
 
 export const Route = createFileRoute("/play/$gameId")({ component: PlayPage });
 
@@ -12,9 +12,13 @@ interface Game { id: string; title: string; description: string | null; type: st
 
 type FitMode = "auto" | "fit" | "fill" | "stretch";
 
-function extractColoringImageUrl(html: string): string | null {
+function extractSrc(html: string): string | null {
   const m = html.match(/const\s+SRC\s*=\s*("([^"]+)"|'([^']+)')/);
   return m ? (m[2] ?? m[3] ?? null) : null;
+}
+function extractPuzzleGrid(html: string): number {
+  const m = html.match(/(?:let|const|var)\s+ROWS\s*=\s*(\d+)/);
+  return m ? parseInt(m[1], 10) : 4;
 }
 
 function PlayPage() {
