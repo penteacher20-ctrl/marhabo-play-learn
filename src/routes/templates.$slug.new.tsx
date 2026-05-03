@@ -268,21 +268,6 @@ function WheelBuilder({ items, setItems }: { items: string[]; setItems: any }) {
   );
 }
 
-function PuzzleBuilder({ words, setWords }: { words: string[]; setWords: any }) {
-  return (
-    <div>
-      <SectionHeader title="كلمات للترتيب" onAdd={() => setWords([...words, ""])} />
-      <div className="space-y-2">
-        {words.map((w, i) => (
-          <div key={i} className="flex gap-2">
-            <input value={w} onChange={(e) => setWords(words.map((x, k) => k === i ? e.target.value : x))} placeholder={`كلمة ${i + 1}`} className="input flex-1" />
-            <button type="button" onClick={() => setWords(words.filter((_, k) => k !== i))} className="px-3 rounded-xl bg-destructive/10 text-destructive font-bold">×</button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function Wrapper({ children }: { children: React.ReactNode }) {
   return (
