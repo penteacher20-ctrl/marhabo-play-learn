@@ -217,6 +217,10 @@ export function generateColoring(c: ColoringConfig): string {
       <input type="range" id="size" min="2" max="60" value="10" style="width:120px">
       <span id="sizeV" style="min-width:24px;display:inline-block">10</span>
     </label>
+    <label style="display:flex;align-items:center;gap:6px;font-weight:700;color:#555">تنعيم
+      <input type="range" id="smooth" min="0" max="90" value="55" style="width:100px">
+      <span id="smoothV" style="min-width:24px;display:inline-block">55</span>
+    </label>
     <button class="btn" id="undo" style="background:#666">↶ تراجع</button>
     <button class="btn" id="reset" style="background:#aaa">↺ إعادة</button>
     <button class="btn" id="save">💾 حفظ</button>
