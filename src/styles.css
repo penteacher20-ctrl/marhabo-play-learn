@@ -135,8 +135,6 @@
   .float-anim, .float-anim-slow, .wiggle { animation: none !important; }
 }
 
-@layer utilities {
-}
 
 @keyframes float {
   0%,100% { transform: translateY(0) rotate(0); }
