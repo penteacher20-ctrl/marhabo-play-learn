@@ -348,7 +348,7 @@ export function generateColoring(c: ColoringConfig): string {
       const last=pts[pts.length-1]; if(last && Math.hypot(sx0-last.x,sy0-last.y)<0.5) return;
       pts.push({x:sx0,y:sy0}); drawSegment();
     }
-    function endStroke(){ if(!drawing) return; if(pts.length>=2){ const a=pts[pts.length-2],b=pts[pts.length-1]; ctx.beginPath(); const m={x:(a.x+b.x)/2,y:(a.y+b.y)/2}; ctx.moveTo(m.x,m.y); ctx.quadraticCurveTo(b.x,b.y,b.x,b.y); ctx.stroke(); } drawing=false; pts=[]; pushHistory(); drawId=null; }
+    function endStroke(){ if(!drawing) return; if(pts.length>=2){ const a=pts[pts.length-2],b=pts[pts.length-1]; ctx.beginPath(); const m={x:(a.x+b.x)/2,y:(a.y+b.y)/2}; ctx.moveTo(m.x,m.y); ctx.quadraticCurveTo(b.x,b.y,b.x,b.y); ctx.stroke(); } ctx.globalAlpha=1; drawing=false; pts=[]; pushHistory(); drawId=null; }
 
     // Multi-touch state
     const pointers=new Map(); // id -> {sx,sy} stage coords
