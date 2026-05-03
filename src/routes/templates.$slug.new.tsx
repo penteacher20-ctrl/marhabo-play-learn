@@ -132,11 +132,24 @@ function NewFromTemplate() {
           {slug === "blanks" && <BlanksBuilder list={blanksList} setList={setBlanksList} />}
           {slug === "matching" && <MatchingBuilder pairs={pairs} setPairs={setPairs} />}
           {slug === "wheel" && <WheelBuilder items={wheelItems} setItems={setWheelItems} />}
-          {slug === "puzzle" && <PuzzleBuilder words={puzzleWords} setWords={setPuzzleWords} />}
+          {slug === "puzzle" && (
+            <div className="space-y-3">
+              <Field label="صورة البازل (PNG/JPG)">
+                <input type="file" accept="image/*" onChange={(e) => setPuzzleImage(e.target.files?.[0] ?? null)} className="input" />
+              </Field>
+              {puzzleImage && <img src={URL.createObjectURL(puzzleImage)} alt="" className="max-h-48 mx-auto rounded-2xl" />}
+              <Field label={`صعوبة (${puzzleGrid}×${puzzleGrid})`}>
+                <input type="range" min={2} max={6} value={puzzleGrid} onChange={(e) => setPuzzleGrid(+e.target.value)} className="w-full" />
+              </Field>
+            </div>
+          )}
           {slug === "draw" && (
-            <Field label="موضوع الرسم (اختياري)">
-              <input value={drawPrompt} onChange={(e) => setDrawPrompt(e.target.value)} placeholder="مثال: ارسم منزلك المفضل" className="input" />
-            </Field>
+            <div className="space-y-3">
+              <Field label="صورة للتلوين (خطوط على خلفية بيضاء)">
+                <input type="file" accept="image/*" onChange={(e) => setColorImage(e.target.files?.[0] ?? null)} className="input" />
+              </Field>
+              {colorImage && <img src={URL.createObjectURL(colorImage)} alt="" className="max-h-48 mx-auto rounded-2xl" />}
+            </div>
           )}
 
           <div className="flex items-center justify-between bg-secondary/50 rounded-2xl px-4 py-3">
