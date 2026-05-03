@@ -225,8 +225,9 @@ export function generatePuzzle(c: PuzzleConfig): string {
 
     function calcSize(){
       const wrap=board.parentNode;
-      const avail=Math.min(wrap.clientWidth-4, window.innerHeight*0.65, 560);
-      SIZE=Math.max(260, Math.floor(avail));
+      const sideW=window.innerWidth>640?180:0;
+      const avail=Math.min(wrap.clientWidth-sideW-12, window.innerHeight*0.55, 520);
+      SIZE=Math.max(240, Math.floor(avail));
       PW=SIZE/COLS; PH=SIZE/ROWS;
       KNOB=Math.min(PW,PH)*0.18;
       PAD=Math.ceil(KNOB+6);
