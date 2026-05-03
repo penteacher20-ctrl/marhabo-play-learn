@@ -120,6 +120,12 @@ function NewFromTemplate() {
           {slug === "blanks" && <BlanksBuilder list={blanksList} setList={setBlanksList} />}
           {slug === "matching" && <MatchingBuilder pairs={pairs} setPairs={setPairs} />}
           {slug === "wheel" && <WheelBuilder items={wheelItems} setItems={setWheelItems} />}
+          {slug === "puzzle" && <PuzzleBuilder words={puzzleWords} setWords={setPuzzleWords} />}
+          {slug === "draw" && (
+            <Field label="موضوع الرسم (اختياري)">
+              <input value={drawPrompt} onChange={(e) => setDrawPrompt(e.target.value)} placeholder="مثال: ارسم منزلك المفضل" className="input" />
+            </Field>
+          )}
 
           <div className="flex items-center justify-between bg-secondary/50 rounded-2xl px-4 py-3">
             <span className="font-bold">{tr("privacy")}</span>
