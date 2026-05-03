@@ -260,13 +260,19 @@ export function generateColoring(c: ColoringConfig): string {
       }
       ctx.putImageData(id,0,0);
     }
-    function pos(e){ const r=cv.getBoundingClientRect(); const t=e.touches?e.touches[0]:e; return { x:Math.floor((t.clientX-r.left)*cv.width/r.width), y:Math.floor((t.clientY-r.top)*cv.height/r.height) }; }
-    let drawing=false,lx=0,ly=0;
-    function down(e){ const p=pos(e); if(tool==='fill'){ fill(p.x,p.y,hex(color)); pushHistory(); return; } drawing=true; lx=p.x; ly=p.y; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle=tool==='eraser'?'#ffffff':color; ctx.lineWidth=size; ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(lx+0.01,ly+0.01); ctx.stroke(); e.preventDefault&&e.preventDefault(); }
-    function move(e){ if(!drawing)return; const p=pos(e); ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(p.x,p.y); ctx.stroke(); lx=p.x; ly=p.y; e.preventDefault&&e.preventDefault(); }
-    function up(){ if(drawing){ drawing=false; pushHistory(); } }
-    cv.addEventListener('mousedown',down); cv.addEventListener('mousemove',move); window.addEventListener('mouseup',up);
-    cv.addEventListener('touchstart',down,{passive:false}); cv.addEventListener('touchmove',move,{passive:false}); window.addEventListener('touchend',up);
+    function pos(e){ const r=cv.getBoundingClientRect(); const sx=cv.width/r.width, sy=cv.height/r.height; return { x:(e.clientX-r.left)*sx, y:(e.clientY-r.top)*sy }; }
+    let drawing=false,lx=0,ly=0,activeId=null;
+    function stroke(x,y){ ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(x,y); ctx.stroke(); lx=x; ly=y; }
+    function down(e){ if(activeId!==null) return; if(e.pointerType==='touch'&&e.isPrimary===false) return; const p=pos(e); if(tool==='fill'){ fill(Math.floor(p.x),Math.floor(p.y),hex(color)); pushHistory(); return; } activeId=e.pointerId; try{ cv.setPointerCapture(e.pointerId); }catch(_){} drawing=true; lx=p.x; ly=p.y; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle=tool==='eraser'?'#ffffff':color; ctx.lineWidth=size; ctx.beginPath(); ctx.arc(lx,ly,size/2,0,Math.PI*2); ctx.fillStyle=ctx.strokeStyle; ctx.fill(); e.preventDefault(); }
+    function move(e){ if(!drawing||e.pointerId!==activeId) return; const evs=(e.getCoalescedEvents&&e.getCoalescedEvents().length)?e.getCoalescedEvents():[e]; for(const ev of evs){ const p=pos(ev); stroke(p.x,p.y); } e.preventDefault(); }
+    function up(e){ if(e&&e.pointerId!==activeId) return; if(drawing){ drawing=false; pushHistory(); } activeId=null; }
+    cv.style.touchAction='none';
+    cv.addEventListener('pointerdown',down);
+    cv.addEventListener('pointermove',move);
+    cv.addEventListener('pointerup',up);
+    cv.addEventListener('pointercancel',up);
+    cv.addEventListener('pointerleave',e=>{ if(drawing&&e.pointerId===activeId){ /* keep drawing via capture */ } });
+
     document.getElementById('undo').onclick=()=>{ if(history.length>1){ history.pop(); const last=history[history.length-1]; ctx.putImageData(last,0,0); } };
     document.getElementById('reset').onclick=()=>{ redraw(); history.length=0; pushHistory(); };
     document.getElementById('save').onclick=()=>{ const a=document.createElement('a'); a.download='coloring.png'; a.href=cv.toDataURL(); a.click(); };
