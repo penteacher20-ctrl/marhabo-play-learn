@@ -11,7 +11,7 @@ export const Route = createFileRoute("/upload")({ component: UploadPage });
 
 function UploadPage() {
   const { tr } = useI18n();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
   const [thumb, setThumb] = useState<File | null>(null);
@@ -20,6 +20,8 @@ function UploadPage() {
   const [isPublic, setIsPublic] = useState(true);
   const [busy, setBusy] = useState(false);
   const [drag, setDrag] = useState(false);
+
+  if (loading) return <Wrapper><div className="card-pop p-10 text-center max-w-md mx-auto">جاري التحميل...</div></Wrapper>;
 
   if (!user) {
     return (

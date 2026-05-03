@@ -15,7 +15,7 @@ const SUPPORTED = ["quiz", "blanks", "matching", "wheel", "puzzle", "draw"];
 function NewFromTemplate() {
   const { slug } = Route.useParams();
   const { tr } = useI18n();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [title, setTitle] = useState("");
   const [isPublic, setIsPublic] = useState(true);
@@ -30,11 +30,20 @@ function NewFromTemplate() {
   const [puzzleGrid, setPuzzleGrid] = useState(3);
   const [colorImage, setColorImage] = useState<File | null>(null);
 
+  if (loading) {
+    return (
+      <Wrapper>
+        <div className="card-pop p-10 text-center max-w-md mx-auto">جاري التحميل...</div>
+      </Wrapper>
+    );
+  }
+
   if (!user) {
     return (
       <Wrapper>
         <div className="card-pop p-10 text-center max-w-md mx-auto">
           <h2 className="text-2xl font-display font-extrabold mb-2">{tr("nav_login")}</h2>
+          <p className="text-muted-foreground mb-4">سجّل دخولك أولاً لإنشاء لعبة من قالب</p>
           <button onClick={() => navigate({ to: "/auth" })} className="bubble-btn text-white" style={{ background: "var(--gradient-primary)" }}>{tr("signin")}</button>
         </div>
       </Wrapper>
