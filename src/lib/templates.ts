@@ -249,7 +249,10 @@ export function generatePuzzle(c: PuzzleConfig): string {
 
     function piecePath(r,c){
       const w=PW,h=PH,k=KNOB;
-      const top=hEdge[r][c],right=vEdge[r][c+1],bottom=hEdge[r+1][c],left=vEdge[r][c];
+      // Shared edges must be complementary: one side protrudes while the
+      // neighbouring side cuts inward. The stored sign describes the edge
+      // from the top/left piece perspective; top/left faces invert it.
+      const top=-hEdge[r][c],right=vEdge[r][c+1],bottom=hEdge[r+1][c],left=-vEdge[r][c];
       const x0=PAD,y0=PAD;
       let d='M '+x0+' '+y0;
       if(top===0){d+=' L '+(x0+w)+' '+y0;}
