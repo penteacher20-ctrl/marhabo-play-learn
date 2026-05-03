@@ -6,6 +6,7 @@ import { Footer } from "@/components/Footer";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
+import { upgradeUserColoringGames } from "@/lib/upgradeColoring";
 
 export const Route = createFileRoute("/dashboard")({ component: Dashboard });
 
