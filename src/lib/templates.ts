@@ -158,34 +158,34 @@ export function generatePuzzle(c: PuzzleConfig): string {
   <style>
     body{padding:0!important;background:linear-gradient(135deg,#fef3ff,#eef2ff)!important}
     .card{display:contents!important}
-    .pz-app{min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:14px;gap:12px;box-sizing:border-box}
-    .pz-head{width:100%;max-width:1100px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-    .pz-head h1{margin:0;font-size:clamp(1.1rem,2.4vw,1.6rem);color:#7a4fd6}
-    .pz-head .hint{font-size:.85rem;color:#666}
+    *{box-sizing:border-box}
+    .pz-app{min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:12px;gap:10px}
+    .pz-head{width:100%;max-width:780px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:#fff;border:2px solid #e6dffb;border-radius:18px;padding:10px 14px;box-shadow:0 2px 10px rgba(109,91,255,.06)}
+    .pz-head h1{margin:0;font-size:clamp(1rem,2.2vw,1.4rem);color:#7a4fd6;display:flex;align-items:center;gap:8px}
     .pz-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    .pz-toolbar button{border:none;border-radius:999px;padding:8px 16px;font-weight:800;cursor:pointer;color:#fff;background:linear-gradient(135deg,#9A73E8,#6D5BFF);box-shadow:0 4px 12px rgba(109,91,255,.3)}
-    .pz-toolbar select{border:2px solid #d8cdf6;border-radius:999px;padding:6px 12px;background:#fff;font-weight:700;color:#7a4fd6}
-    .pz-main{display:grid;grid-template-columns:auto 220px;gap:18px;align-items:start;width:100%;max-width:1100px}
-    @media(max-width:820px){.pz-main{grid-template-columns:1fr}}
-    .pz-board-wrap{display:flex;flex-direction:column;gap:14px;align-items:center;min-width:0}
-    #board{position:relative;background:#faf7ff;border-radius:18px;border:3px dashed #b9a4f0;box-shadow:inset 0 4px 14px rgba(0,0,0,.05);touch-action:none}
-    #tray{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;padding:14px;background:#fff;border-radius:18px;border:2px solid #e6dffb;min-height:120px;width:100%;max-width:520px;box-sizing:border-box}
-    .pz-side{display:flex;flex-direction:column;align-items:center;gap:10px;background:#fff;border-radius:18px;padding:14px;border:2px solid #e6dffb;position:sticky;top:14px}
-    .pz-side .ref-label{font-size:.85rem;color:#7a4fd6;font-weight:800}
-    .pz-side .ref{width:190px;height:190px;border-radius:14px;object-fit:cover;background:#f5f0ff;border:2px solid #d8cdf6}
-    .pz-side .progress{font-size:.85rem;color:#666;font-weight:700}
+    .pz-toolbar button{border:none;border-radius:999px;padding:7px 14px;font-weight:800;cursor:pointer;color:#fff;background:linear-gradient(135deg,#9A73E8,#6D5BFF);box-shadow:0 3px 10px rgba(109,91,255,.3);font-size:.85rem}
+    .pz-toolbar select{border:2px solid #d8cdf6;border-radius:999px;padding:5px 10px;background:#fff;font-weight:700;color:#7a4fd6;font-size:.85rem}
+    .pz-stage{width:100%;max-width:780px;display:flex;flex-direction:column;align-items:center;gap:10px}
+    .pz-board-row{display:flex;gap:12px;align-items:flex-start;width:100%;justify-content:center;flex-wrap:wrap}
+    #board{position:relative;background:#faf7ff;border-radius:18px;border:3px dashed #b9a4f0;box-shadow:inset 0 4px 14px rgba(0,0,0,.05);touch-action:none;flex-shrink:0}
+    .pz-side{display:flex;flex-direction:column;align-items:center;gap:8px;background:#fff;border-radius:16px;padding:10px;border:2px solid #e6dffb;width:160px;flex-shrink:0}
+    .pz-side .ref-label{font-size:.78rem;color:#7a4fd6;font-weight:800}
+    .pz-side .ref{width:140px;height:140px;border-radius:12px;object-fit:cover;background:#f5f0ff;border:2px solid #d8cdf6}
+    .pz-side .progress{font-size:.8rem;color:#666;font-weight:700}
     .pz-side .bar{width:100%;height:8px;background:#eee;border-radius:99px;overflow:hidden}
     .pz-side .bar>i{display:block;height:100%;width:0;background:linear-gradient(90deg,#9A73E8,#6D5BFF);transition:width .3s}
-    .pp{cursor:grab;user-select:none;-webkit-user-drag:none;touch-action:none;filter:drop-shadow(0 2px 0 rgba(0,0,0,.5)) drop-shadow(0 4px 6px rgba(0,0,0,.25));transition:transform .1s}
+    #tray{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;padding:12px;background:#fff;border-radius:18px;border:2px solid #e6dffb;min-height:110px;width:100%;max-width:780px;max-height:30vh;overflow-y:auto}
+    .pp{cursor:grab;user-select:none;-webkit-user-drag:none;touch-action:none;filter:drop-shadow(0 2px 0 rgba(0,0,0,.4)) drop-shadow(0 3px 5px rgba(0,0,0,.2));transition:transform .1s}
     .pp:active{cursor:grabbing;transform:scale(1.05)}
     .pp.placed{cursor:default;filter:none;pointer-events:none}
-    .pz-result{font-size:1.4rem;font-weight:900;color:#7a4fd6;text-align:center;min-height:1.5em}
+    .pz-result{font-size:1.2rem;font-weight:900;color:#7a4fd6;text-align:center;min-height:1.2em}
+    @media(max-width:640px){.pz-side{flex-direction:row;width:100%;max-width:780px;justify-content:center;flex-wrap:wrap}.pz-side .ref{width:80px;height:80px}}
   </style>
   <div class="pz-app">
     <div class="pz-head">
       <h1>🧩 ${escapeHtml(c.title)}</h1>
       <div class="pz-toolbar">
-        <label style="font-size:.8rem;color:#666;font-weight:700">الصعوبة:</label>
+        <label style="font-size:.78rem;color:#666;font-weight:700">الصعوبة:</label>
         <select id="difficulty">
           <option value="3">سهل (3×3)</option>
           <option value="4" selected>متوسط (4×4)</option>
@@ -196,20 +196,21 @@ export function generatePuzzle(c: PuzzleConfig): string {
         <button id="reset">↺ خلط جديد</button>
       </div>
     </div>
-    <div class="pz-main">
-      <div class="pz-board-wrap">
+    <div class="pz-stage">
+      <div class="pz-board-row">
         <div id="board"></div>
-        <div id="tray"></div>
-        <div class="pz-result" id="res"></div>
+        <aside class="pz-side">
+          <span class="ref-label">📷 الصورة المرجعية</span>
+          <img id="refImg" class="ref" src="${c.imageUrl}" alt="reference" crossorigin="anonymous">
+          <div class="progress"><span id="progTxt">0 / 0</span></div>
+          <div class="bar"><i id="progBar"></i></div>
+        </aside>
       </div>
-      <aside class="pz-side">
-        <span class="ref-label">📷 الصورة المرجعية</span>
-        <img id="refImg" class="ref" src="${c.imageUrl}" alt="reference" crossorigin="anonymous">
-        <div class="progress"><span id="progTxt">0 / 0</span></div>
-        <div class="bar"><i id="progBar"></i></div>
-      </aside>
+      <div id="tray"></div>
+      <div class="pz-result" id="res"></div>
     </div>
   </div>
+
   <script>
     const SRC = ${JSON.stringify(c.imageUrl)};
     let ROWS=${c.rows||4}, COLS=${c.cols||4};
