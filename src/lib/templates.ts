@@ -1,13 +1,14 @@
 // Generates standalone HTML strings for each template type.
 // Each generator takes a config object and returns a complete HTML document.
 
-const baseHead = (title: string) => `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title>
+const baseHead = (title: string) => `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>${escapeHtml(title)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;700;900&display=swap" rel="stylesheet">
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Tajawal',sans-serif;background:linear-gradient(135deg,#F0F2F8,#fff);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;color:#222;text-align:center}
-  h1{font-size:2rem;margin-bottom:1rem;color:#9A73E8}
-  .card{background:#fff;border-radius:28px;padding:32px;max-width:640px;width:100%;box-shadow:0 12px 40px -12px rgba(154,115,232,.3)}
+  html,body{height:100%}
+  body{font-family:'Tajawal',sans-serif;background:linear-gradient(135deg,#F0F2F8,#fff);min-height:100dvh;color:#222;text-align:center;overflow-x:hidden}
+  .card{min-height:100dvh;width:100%;padding:clamp(16px,3vw,32px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px}
+  h1{font-size:clamp(1.4rem,3.2vw,2.2rem);color:#9A73E8}
   .btn{display:inline-block;border:none;cursor:pointer;font:inherit;font-weight:800;padding:14px 28px;border-radius:999px;background:linear-gradient(135deg,#9A73E8,#7c5fd6);color:#fff;font-size:1rem;box-shadow:0 6px 0 rgba(0,0,0,.12);transition:transform .15s}
   .btn:hover{transform:translateY(-2px)}
   .btn:active{transform:translateY(2px)}
@@ -19,16 +20,18 @@ const baseHead = (title: string) => `<!doctype html><html lang="ar" dir="rtl"><h
   input[type=text]{font:inherit;font-weight:700;padding:8px 14px;border-radius:14px;border:2px solid #ddd;background:#fff;text-align:center;width:140px;margin:0 4px}
   input[type=text].ok{border-color:#8EE870;background:#e8fbe0}
   input[type=text].bad{border-color:#FF6C67;background:#ffe8e7}
-  .pair{padding:12px 18px;border-radius:18px;background:#F0F2F8;font-weight:700;cursor:pointer;border:3px solid transparent;transition:all .15s}
+  .pair{padding:14px 18px;border-radius:18px;background:#F0F2F8;font-weight:700;cursor:pointer;border:3px solid transparent;transition:all .15s;font-size:1.05rem}
   .pair.sel{border-color:#9A73E8;background:#fff}
   .pair.done{background:#8EE870;color:#fff;cursor:default;border-color:#5cc04a}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .wheel-wrap{position:relative;width:300px;height:300px;margin:0 auto 20px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;width:100%;max-width:980px}
+  .wheel-wrap{position:relative;width:min(70vmin,440px);aspect-ratio:1;margin:0 auto 20px}
   .wheel{width:100%;height:100%;border-radius:50%;transition:transform 4s cubic-bezier(.17,.67,.3,1.05);box-shadow:0 0 0 8px #fff,0 12px 40px rgba(0,0,0,.2)}
   .pointer{position:absolute;top:-12px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:18px solid transparent;border-right:18px solid transparent;border-top:28px solid #FF6C67;z-index:2}
   .result{font-size:1.4rem;font-weight:900;margin-top:12px;color:#9A73E8;min-height:2em}
-  .progress{height:8px;background:#F0F2F8;border-radius:99px;overflow:hidden;margin-bottom:18px}
+  .progress{height:8px;background:#F0F2F8;border-radius:99px;overflow:hidden;margin-bottom:18px;width:100%;max-width:780px}
   .progress>div{height:100%;background:linear-gradient(90deg,#8EE870,#2FEAFF);transition:width .3s}
+  .stage{width:100%;max-width:880px;display:flex;flex-direction:column;align-items:center;gap:14px}
+  #game{width:100%;max-width:780px}
 </style></head><body><div class="card">`;
 
 const tail = `</div></body></html>`;
