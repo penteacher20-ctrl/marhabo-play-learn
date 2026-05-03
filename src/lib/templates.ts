@@ -379,6 +379,26 @@ export function generatePuzzle(c: PuzzleConfig): string {
     }
 
     document.getElementById('reset').onclick=build;
+    document.getElementById('hint').onclick=()=>{
+      // pick a random not-yet-placed piece in the tray and snap it home
+      const remaining=pieces.filter(el=>!el.classList.contains('placed') && el.parentNode===tray);
+      if(!remaining.length) return;
+      const el=remaining[Math.floor(Math.random()*remaining.length)];
+      const r=parseInt(el.dataset.r,10), c=parseInt(el.dataset.c,10);
+      board.appendChild(el);
+      el.style.margin='0';
+      el.style.position='absolute';
+      el.style.left=(c*PW - PAD)+'px';
+      el.style.top=(r*PH - PAD)+'px';
+      el.style.zIndex='10';
+      // brief flash highlight
+      el.style.transition='filter .2s';
+      el.style.filter='drop-shadow(0 0 12px #FFB347) drop-shadow(0 3px 4px rgba(0,0,0,.25))';
+      setTimeout(()=>{ el.style.filter=''; }, 700);
+      el.classList.add('placed');
+      placed++; updateProgress();
+      if(placed===total){ res.textContent='🎉 أحسنت! أكملت اللغز'; }
+    };
     diffSel.onchange=build;
     window.addEventListener('resize',()=>{ /* keep current pieces; only rebuild on user reset */ });
     build();
