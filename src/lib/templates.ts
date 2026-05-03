@@ -294,18 +294,22 @@ export function generatePuzzle(c: PuzzleConfig): string {
       const cpPath=document.createElementNS(svgNs,'path');
       cpPath.setAttribute('d',d);
       cp.appendChild(cpPath); defs.appendChild(cp); svg.appendChild(defs);
-      // outline
+      // Cartoon-style double outline: bold black + crisp white inner highlight.
       const outline=document.createElementNS(svgNs,'path');
       outline.setAttribute('d',d);
       outline.setAttribute('fill','none');
-      outline.setAttribute('stroke','rgba(0,0,0,.45)');
-      outline.setAttribute('stroke-width','1.4');
+      outline.setAttribute('stroke','#111');
+      outline.setAttribute('stroke-width','2.2');
+      outline.setAttribute('stroke-linejoin','round');
+      outline.setAttribute('stroke-linecap','round');
       svg.appendChild(outline);
       const inner=document.createElementNS(svgNs,'path');
       inner.setAttribute('d',d);
       inner.setAttribute('fill','none');
-      inner.setAttribute('stroke','rgba(255,255,255,.45)');
-      inner.setAttribute('stroke-width','.6');
+      inner.setAttribute('stroke','#fff');
+      inner.setAttribute('stroke-width','1');
+      inner.setAttribute('stroke-linejoin','round');
+      inner.setAttribute('stroke-opacity','.85');
       svg.appendChild(inner);
       wrap.appendChild(svg);
       return wrap;
