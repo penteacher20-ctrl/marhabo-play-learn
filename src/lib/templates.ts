@@ -149,39 +149,103 @@ export function generateWheel(c: WheelConfig): string {
   </script>` + tail;
 }
 
-export interface PuzzleConfig { title: string; words: string[]; }
+export interface PuzzleConfig { title: string; imageUrl: string; rows: number; cols: number; }
 export function generatePuzzle(c: PuzzleConfig): string {
   return baseHead(c.title) + `
   <h1>${escapeHtml(c.title)}</h1>
-  <p style="margin-bottom:18px;color:#666">رتّب الحروف لتكوين الكلمة الصحيحة</p>
-  <div id="game"></div>
+  <p style="margin-bottom:14px;color:#666">اسحب القطع لمكانها الصحيح</p>
+  <div id="board" style="position:relative;margin:0 auto;background:#F0F2F8;border-radius:20px;border:3px dashed #9A73E8aa"></div>
+  <div id="tray" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:18px;padding:14px;background:#F0F2F8;border-radius:20px;min-height:80px"></div>
   <div class="result" id="res"></div>
+  <button class="btn" id="reset" style="margin-top:10px;background:#aaa">↺ خلط</button>
   <script>
-    const W = ${JSON.stringify(c.words.filter(w => w.trim()))};
-    let i = 0, score = 0;
-    const game = document.getElementById('game'), res = document.getElementById('res');
-    function shuffle(s){ const a=s.split(''); for(let k=a.length-1;k>0;k--){const j=Math.floor(Math.random()*(k+1));[a[k],a[j]]=[a[j],a[k]];} return a.join('')===s?shuffle(s):a; }
-    function render(){
-      if(i>=W.length){ game.innerHTML='<div class="score">🎉 '+score+'/'+W.length+'</div><button class="btn" onclick="location.reload()">العب مجدداً</button>'; return; }
-      const target = W[i]; const letters = shuffle(target);
-      const slots = target.split('').map((_,k)=>'<span class="slot" data-k="'+k+'" style="display:inline-block;min-width:42px;height:50px;border-bottom:4px solid #9A73E8;margin:0 4px;font-size:1.6rem;font-weight:900;line-height:50px"></span>').join('');
-      const tiles = letters.map((l,k)=>'<button class="opt tile" data-l="'+l+'" data-k="'+k+'" style="display:inline-block;width:auto;min-width:50px;margin:4px;font-size:1.4rem">'+l+'</button>').join('');
-      game.innerHTML = '<div style="margin:18px 0;direction:ltr">'+slots+'</div><div>'+tiles+'</div><button class="btn" id="reset" style="margin-top:14px;background:#aaa">↺ مسح</button>';
-      let pos = 0; const placed = [];
-      game.querySelectorAll('.tile').forEach(t=>t.onclick=()=>{
-        if(t.disabled||pos>=target.length) return;
-        const slot = game.querySelectorAll('.slot')[pos];
-        slot.textContent = t.dataset.l; t.disabled=true; t.style.opacity=.3;
-        placed.push({tile:t,slot}); pos++;
-        if(pos===target.length){
-          const guess = Array.from(game.querySelectorAll('.slot')).map(s=>s.textContent).join('');
-          if(guess===target){ score++; res.textContent='✅ صحيح!'; setTimeout(()=>{ res.textContent=''; i++; render(); },900); }
-          else { res.textContent='❌ حاول مجدداً'; setTimeout(()=>{ res.textContent=''; i++; render(); },1200); }
-        }
+    const SRC = ${JSON.stringify(c.imageUrl)};
+    const ROWS = ${c.rows}, COLS = ${c.cols};
+    const SIZE = Math.min(420, window.innerWidth - 80);
+    const PW = SIZE/COLS, PH = SIZE/ROWS;
+    const board = document.getElementById('board'), tray = document.getElementById('tray'), res = document.getElementById('res');
+    board.style.width = SIZE+'px'; board.style.height = SIZE+'px';
+    let placed = 0;
+    function build(){
+      placed = 0; res.textContent=''; board.innerHTML=''; tray.innerHTML='';
+      // slot outlines
+      for(let r=0;r<ROWS;r++) for(let cc=0;cc<COLS;cc++){
+        const slot = document.createElement('div');
+        slot.dataset.idx = r*COLS+cc;
+        slot.style.cssText='position:absolute;left:'+(cc*PW)+'px;top:'+(r*PH)+'px;width:'+PW+'px;height:'+PH+'px;border:1px dashed #9A73E866;box-sizing:border-box';
+        board.appendChild(slot);
+      }
+      const pieces=[]; for(let r=0;r<ROWS;r++) for(let cc=0;cc<COLS;cc++) pieces.push({r,c:cc,idx:r*COLS+cc});
+      pieces.sort(()=>Math.random()-0.5);
+      pieces.forEach(p=>{
+        const el = document.createElement('div');
+        el.className='piece'; el.draggable=true; el.dataset.idx=p.idx;
+        el.style.cssText='width:'+PW+'px;height:'+PH+'px;background-image:url("'+SRC+'");background-size:'+(PW*COLS)+'px '+(PH*ROWS)+'px;background-position:-'+(p.c*PW)+'px -'+(p.r*PH)+'px;border-radius:8px;box-shadow:0 4px 10px rgba(0,0,0,.15);cursor:grab;border:2px solid #fff';
+        el.addEventListener('dragstart',e=>{ e.dataTransfer.setData('text',p.idx); el.style.opacity=.5; });
+        el.addEventListener('dragend',()=>el.style.opacity=1);
+        // touch
+        let touchClone=null;
+        el.addEventListener('touchstart',e=>{ touchClone=el; e.preventDefault(); },{passive:false});
+        el.addEventListener('touchmove',e=>{ const t=e.touches[0]; el.style.position='fixed'; el.style.left=(t.clientX-PW/2)+'px'; el.style.top=(t.clientY-PH/2)+'px'; el.style.zIndex=99; e.preventDefault(); },{passive:false});
+        el.addEventListener('touchend',e=>{ const t=e.changedTouches[0]; el.style.display='none'; const tgt=document.elementFromPoint(t.clientX,t.clientY); el.style.display=''; el.style.position=''; el.style.zIndex=''; el.style.left=''; el.style.top=''; if(tgt&&tgt.dataset&&+tgt.dataset.idx===p.idx) snap(el,tgt); });
+        tray.appendChild(el);
       });
-      game.querySelector('#reset').onclick = ()=>{ placed.forEach(p=>{p.tile.disabled=false;p.tile.style.opacity=1;p.slot.textContent='';}); placed.length=0; pos=0; };
+      board.querySelectorAll('div[data-idx]').forEach(slot=>{
+        slot.addEventListener('dragover',e=>e.preventDefault());
+        slot.addEventListener('drop',e=>{ e.preventDefault(); const idx=+e.dataTransfer.getData('text'); if(idx===+slot.dataset.idx){ const piece=tray.querySelector('.piece[data-idx="'+idx+'"]')||document.querySelector('.piece[data-idx="'+idx+'"]'); if(piece) snap(piece,slot); } });
+      });
     }
-    render();
+    function snap(piece,slot){ slot.appendChild(piece); piece.draggable=false; piece.style.cursor='default'; piece.style.boxShadow='none'; piece.style.border='none'; placed++; if(placed===ROWS*COLS) res.textContent='🎉 أحسنت!'; }
+    document.getElementById('reset').onclick = build;
+    build();
+  </script>` + tail;
+}
+
+export interface ColoringConfig { title: string; imageUrl: string; }
+export function generateColoring(c: ColoringConfig): string {
+  return baseHead(c.title) + `
+  <h1>${escapeHtml(c.title)}</h1>
+  <p style="margin-bottom:14px;color:#666">اختر لوناً ثم اضغط على المنطقة لتلوينها</p>
+  <canvas id="cv" style="background:#fff;border-radius:20px;box-shadow:inset 0 0 0 3px #F0F2F8;cursor:crosshair;max-width:100%;touch-action:manipulation"></canvas>
+  <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center">
+    <span id="palette"></span>
+    <button class="btn" id="reset" style="background:#aaa">↺ إعادة</button>
+    <button class="btn" id="save">💾 حفظ</button>
+  </div>
+  <script>
+    const SRC = ${JSON.stringify(c.imageUrl)};
+    const colors=['#FF6C67','#FFCC35','#8EE870','#2FEAFF','#9A73E8','#FF8FBF','#7B4F2A','#222'];
+    let color=colors[0];
+    const pal=document.getElementById('palette');
+    pal.innerHTML=colors.map((c,i)=>'<button data-c="'+c+'" style="width:34px;height:34px;border-radius:50%;border:3px solid '+(i===0?'#222':'#fff')+';background:'+c+';margin:0 4px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.2)"></button>').join('');
+    pal.querySelectorAll('button').forEach(b=>b.onclick=()=>{ color=b.dataset.c; pal.querySelectorAll('button').forEach(x=>x.style.borderColor='#fff'); b.style.borderColor='#222'; });
+    const cv=document.getElementById('cv'),ctx=cv.getContext('2d',{willReadFrequently:true});
+    const img=new Image(); img.crossOrigin='anonymous';
+    img.onload=()=>{ const max=560; const r=Math.min(1,max/img.width,max/img.height); cv.width=img.width*r; cv.height=img.height*r; redraw(); };
+    img.onerror=()=>{ document.getElementById('res')&&(document.getElementById('res').textContent='تعذّر تحميل الصورة'); };
+    img.src=SRC;
+    function redraw(){ ctx.clearRect(0,0,cv.width,cv.height); ctx.fillStyle='#fff'; ctx.fillRect(0,0,cv.width,cv.height); ctx.drawImage(img,0,0,cv.width,cv.height); }
+    function hex(h){ return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16),255]; }
+    function fill(x,y,col){
+      const id=ctx.getImageData(0,0,cv.width,cv.height); const d=id.data; const W=cv.width,H=cv.height;
+      const i0=(y*W+x)*4; const sr=d[i0],sg=d[i0+1],sb=d[i0+2];
+      // don't fill black-ish (lines)
+      if(sr<60&&sg<60&&sb<60) return;
+      const tr=col[0],tg=col[1],tb=col[2];
+      if(Math.abs(sr-tr)+Math.abs(sg-tg)+Math.abs(sb-tb)<10) return;
+      const stack=[[x,y]]; const tol=60;
+      while(stack.length){
+        const [cx,cy]=stack.pop(); if(cx<0||cy<0||cx>=W||cy>=H) continue;
+        const i=(cy*W+cx)*4;
+        if(Math.abs(d[i]-sr)>tol||Math.abs(d[i+1]-sg)>tol||Math.abs(d[i+2]-sb)>tol) continue;
+        d[i]=tr;d[i+1]=tg;d[i+2]=tb;d[i+3]=255;
+        stack.push([cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]);
+      }
+      ctx.putImageData(id,0,0);
+    }
+    cv.addEventListener('click',e=>{ const r=cv.getBoundingClientRect(); const x=Math.floor((e.clientX-r.left)*cv.width/r.width); const y=Math.floor((e.clientY-r.top)*cv.height/r.height); fill(x,y,hex(color)); });
+    document.getElementById('reset').onclick=redraw;
+    document.getElementById('save').onclick=()=>{ const a=document.createElement('a'); a.download='coloring.png'; a.href=cv.toDataURL(); a.click(); };
   </script>` + tail;
 }
 
