@@ -206,7 +206,16 @@ export function generateColoring(c: ColoringConfig): string {
   return baseHead(c.title) + `
   <h1>${escapeHtml(c.title)}</h1>
   <p style="margin-bottom:14px;color:#666">اختر أداة ولون ثم لوّن الصورة (دلو للملء، فرشاة للرسم، ممحاة للمسح)</p>
-  <canvas id="cv" style="background:#fff;border-radius:20px;box-shadow:inset 0 0 0 3px #F0F2F8;cursor:crosshair;max-width:100%;touch-action:none"></canvas>
+  <div id="stage" style="position:relative;width:100%;max-width:640px;height:min(70vh,520px);overflow:hidden;border-radius:20px;background:#fff;box-shadow:inset 0 0 0 3px #F0F2F8;touch-action:none;-webkit-user-select:none;user-select:none">
+    <div id="zoom" style="position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform">
+      <canvas id="cv" style="display:block;cursor:crosshair;touch-action:none"></canvas>
+    </div>
+    <div style="position:absolute;left:8px;bottom:8px;display:flex;gap:6px;z-index:2">
+      <button class="btn" id="zin" style="padding:6px 10px;font-size:.9rem">➕</button>
+      <button class="btn" id="zout" style="padding:6px 10px;font-size:.9rem;background:#bbb">➖</button>
+      <button class="btn" id="zfit" style="padding:6px 10px;font-size:.9rem;background:#666">⤢</button>
+    </div>
+  </div>
   <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:center;max-width:640px">
     <div id="tools" style="display:flex;gap:6px"></div>
     <span id="palette" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center"></span>
@@ -241,11 +250,19 @@ export function generateColoring(c: ColoringConfig): string {
     const sz=document.getElementById('size'), szV=document.getElementById('sizeV');
     sz.oninput=()=>{ size=+sz.value; szV.textContent=size; };
     const cv=document.getElementById('cv'),ctx=cv.getContext('2d',{willReadFrequently:true});
+    const stage=document.getElementById('stage'), zoomEl=document.getElementById('zoom');
+    let scale=1, tx=0, ty=0;
+    function applyXf(){ zoomEl.style.transform='translate('+tx+'px,'+ty+'px) scale('+scale+')'; }
+    function fitToStage(){ const sw=stage.clientWidth, sh=stage.clientHeight; scale=Math.min(sw/cv.width, sh/cv.height); tx=(sw-cv.width*scale)/2; ty=(sh-cv.height*scale)/2; applyXf(); }
     const img=new Image(); img.crossOrigin='anonymous';
-    img.onload=()=>{ const max=620; const r=Math.min(1,max/img.width,max/img.height); cv.width=img.width*r; cv.height=img.height*r; redraw(); pushHistory(); };
-    img.onerror=()=>{ cv.width=620;cv.height=420; ctx.fillStyle='#fff';ctx.fillRect(0,0,cv.width,cv.height); pushHistory(); };
+    img.onload=()=>{ const max=1200; const r=Math.min(1,max/img.width,max/img.height); cv.width=img.width*r; cv.height=img.height*r; redraw(); pushHistory(); fitToStage(); };
+    img.onerror=()=>{ cv.width=1000;cv.height=700; ctx.fillStyle='#fff';ctx.fillRect(0,0,cv.width,cv.height); pushHistory(); fitToStage(); };
     img.src=SRC;
     function redraw(){ ctx.clearRect(0,0,cv.width,cv.height); ctx.fillStyle='#fff'; ctx.fillRect(0,0,cv.width,cv.height); if(img.complete&&img.naturalWidth) ctx.drawImage(img,0,0,cv.width,cv.height); }
+    document.getElementById('zin').onclick=()=>{ zoomAt(stage.clientWidth/2,stage.clientHeight/2,1.25); };
+    document.getElementById('zout').onclick=()=>{ zoomAt(stage.clientWidth/2,stage.clientHeight/2,1/1.25); };
+    document.getElementById('zfit').onclick=fitToStage;
+    function zoomAt(px,py,f){ const wx=(px-tx)/scale, wy=(py-ty)/scale; scale*=f; scale=Math.max(0.2,Math.min(8,scale)); tx=px-wx*scale; ty=py-wy*scale; applyXf(); }
     const history=[]; function pushHistory(){ try{ history.push(ctx.getImageData(0,0,cv.width,cv.height)); if(history.length>20)history.shift(); }catch(e){} }
     function hex(h){ if(h.length===4)h='#'+h[1]+h[1]+h[2]+h[2]+h[3]+h[3]; return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16),255]; }
     function fill(x,y,col){
@@ -265,35 +282,79 @@ export function generateColoring(c: ColoringConfig): string {
       ctx.putImageData(id,0,0);
     }
     function pos(e){ const r=cv.getBoundingClientRect(); const sx=cv.width/r.width, sy=cv.height/r.height; return { x:(e.clientX-r.left)*sx, y:(e.clientY-r.top)*sy }; }
-    let drawing=false,lx=0,ly=0,activeId=null;
+    function stagePos(e){ const r=stage.getBoundingClientRect(); return { x:e.clientX-r.left, y:e.clientY-r.top }; }
+    let drawing=false, drawId=null;
     let sx0=0,sy0=0,smooth=0.55,pts=[];
     const smI=document.getElementById('smooth'), smV=document.getElementById('smoothV');
     smI.oninput=()=>{ smooth=+smI.value/100; smV.textContent=smI.value; };
-    function drawSegment(){ // quadratic curve through last 3 smoothed points
-      const n=pts.length; if(n<2) return;
-      ctx.beginPath();
+    function drawSegment(){ const n=pts.length; if(n<2) return; ctx.beginPath();
       if(n===2){ ctx.moveTo(pts[0].x,pts[0].y); ctx.lineTo(pts[1].x,pts[1].y); }
       else { const a=pts[n-3],b=pts[n-2],c=pts[n-1]; const m1={x:(a.x+b.x)/2,y:(a.y+b.y)/2}, m2={x:(b.x+c.x)/2,y:(b.y+c.y)/2}; ctx.moveTo(m1.x,m1.y); ctx.quadraticCurveTo(b.x,b.y,m2.x,m2.y); }
       ctx.stroke();
     }
-    function addPoint(x,y){ // EMA filter then push
-      const a=1-smooth; sx0=sx0+(x-sx0)*a; sy0=sy0+(y-sy0)*a;
+    function addPoint(x,y){ const a=1-smooth; sx0=sx0+(x-sx0)*a; sy0=sy0+(y-sy0)*a;
       const last=pts[pts.length-1]; if(last && Math.hypot(sx0-last.x,sy0-last.y)<0.5) return;
       pts.push({x:sx0,y:sy0}); drawSegment();
     }
-    function down(e){ if(activeId!==null) return; if(e.pointerType==='touch'&&e.isPrimary===false) return; const p=pos(e); if(tool==='fill'){ fill(Math.floor(p.x),Math.floor(p.y),hex(color)); pushHistory(); return; } activeId=e.pointerId; try{ cv.setPointerCapture(e.pointerId); }catch(_){} drawing=true; sx0=p.x; sy0=p.y; pts=[{x:p.x,y:p.y}]; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle=tool==='eraser'?'#ffffff':color; ctx.lineWidth=size; ctx.beginPath(); ctx.arc(p.x,p.y,size/2,0,Math.PI*2); ctx.fillStyle=ctx.strokeStyle; ctx.fill(); e.preventDefault(); }
-    function move(e){ if(!drawing||e.pointerId!==activeId) return; const evs=(e.getCoalescedEvents&&e.getCoalescedEvents().length)?e.getCoalescedEvents():[e]; for(const ev of evs){ const p=pos(ev); addPoint(p.x,p.y); } e.preventDefault(); }
-    function up(e){ if(e&&e.pointerId!==activeId) return; if(drawing){ // finalize tail
-        if(pts.length>=2){ const a=pts[pts.length-2],b=pts[pts.length-1]; ctx.beginPath(); const m={x:(a.x+b.x)/2,y:(a.y+b.y)/2}; ctx.moveTo(m.x,m.y); ctx.quadraticCurveTo(b.x,b.y,b.x,b.y); ctx.stroke(); }
-        drawing=false; pts=[]; pushHistory();
-      } activeId=null; }
-    cv.style.touchAction='none';
-    cv.addEventListener('pointerdown',down);
-    cv.addEventListener('pointermove',move);
-    cv.addEventListener('pointerup',up);
-    cv.addEventListener('pointercancel',up);
+    function endStroke(){ if(!drawing) return; if(pts.length>=2){ const a=pts[pts.length-2],b=pts[pts.length-1]; ctx.beginPath(); const m={x:(a.x+b.x)/2,y:(a.y+b.y)/2}; ctx.moveTo(m.x,m.y); ctx.quadraticCurveTo(b.x,b.y,b.x,b.y); ctx.stroke(); } drawing=false; pts=[]; pushHistory(); drawId=null; }
 
-    cv.addEventListener('pointerleave',e=>{ if(drawing&&e.pointerId===activeId){ /* keep drawing via capture */ } });
+    // Multi-touch state
+    const pointers=new Map(); // id -> {sx,sy} stage coords
+    let gesture=null; // {startDist, startScale, startTx, startTy, startMid}
+
+    function down(e){
+      pointers.set(e.pointerId, stagePos(e));
+      try{ stage.setPointerCapture(e.pointerId); }catch(_){}
+      e.preventDefault();
+      if(pointers.size===1){
+        if(tool==='fill'){ const p=pos(e); fill(Math.floor(p.x),Math.floor(p.y),hex(color)); pushHistory(); return; }
+        const p=pos(e); drawId=e.pointerId; drawing=true; sx0=p.x; sy0=p.y; pts=[{x:p.x,y:p.y}];
+        ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle=tool==='eraser'?'#ffffff':color; ctx.lineWidth=size;
+        ctx.beginPath(); ctx.arc(p.x,p.y,size/2,0,Math.PI*2); ctx.fillStyle=ctx.strokeStyle; ctx.fill();
+      } else if(pointers.size===2){
+        // cancel in-flight stroke (revert via history) and switch to gesture
+        if(drawing){ drawing=false; pts=[]; drawId=null;
+          const last=history[history.length-1]; if(last) ctx.putImageData(last,0,0);
+        }
+        const [a,b]=[...pointers.values()];
+        gesture={ startDist:Math.hypot(a.x-b.x,a.y-b.y), startScale:scale, startTx:tx, startTy:ty,
+          startMid:{x:(a.x+b.x)/2,y:(a.y+b.y)/2}, worldMid:{x:((a.x+b.x)/2-tx)/scale, y:((a.y+b.y)/2-ty)/scale} };
+      }
+    }
+    function move(e){
+      if(!pointers.has(e.pointerId)) return;
+      pointers.set(e.pointerId, stagePos(e));
+      e.preventDefault();
+      if(gesture && pointers.size>=2){
+        const [a,b]=[...pointers.values()];
+        const d=Math.hypot(a.x-b.x,a.y-b.y); const f=d/gesture.startDist;
+        scale=Math.max(0.2,Math.min(8, gesture.startScale*f));
+        const mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
+        tx=mid.x - gesture.worldMid.x*scale;
+        ty=mid.y - gesture.worldMid.y*scale;
+        applyXf();
+        return;
+      }
+      if(drawing && e.pointerId===drawId){
+        const evs=(e.getCoalescedEvents&&e.getCoalescedEvents().length)?e.getCoalescedEvents():[e];
+        for(const ev of evs){ const p=pos(ev); addPoint(p.x,p.y); }
+      }
+    }
+    function up(e){
+      pointers.delete(e.pointerId);
+      try{ stage.releasePointerCapture(e.pointerId); }catch(_){}
+      if(pointers.size<2) gesture=null;
+      if(e.pointerId===drawId) endStroke();
+    }
+    stage.addEventListener('pointerdown',down);
+    stage.addEventListener('pointermove',move);
+    stage.addEventListener('pointerup',up);
+    stage.addEventListener('pointercancel',up);
+    stage.addEventListener('pointerleave',up);
+    stage.addEventListener('wheel',e=>{ e.preventDefault(); const p=stagePos(e); zoomAt(p.x,p.y, e.deltaY<0?1.1:1/1.1); },{passive:false});
+
+
+    
 
     document.getElementById('undo').onclick=()=>{ if(history.length>1){ history.pop(); const last=history[history.length-1]; ctx.putImageData(last,0,0); } };
     document.getElementById('reset').onclick=()=>{ redraw(); history.length=0; pushHistory(); };
