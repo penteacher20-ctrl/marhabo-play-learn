@@ -71,6 +71,9 @@ function Dashboard() {
         <div className="flex flex-wrap gap-3 mb-8">
           <Link to="/upload" className="bubble-btn text-white" style={{ background: "var(--gradient-primary)" }}>+ {tr("upload_new")}</Link>
           <Link to="/templates" className="bubble-btn text-foreground" style={{ background: "var(--yellow-fun)" }}>✨ {tr("from_template")}</Link>
+          <button onClick={upgradeColoring} disabled={upgrading} className="bubble-btn text-white disabled:opacity-60" style={{ background: "var(--gradient-fresh, linear-gradient(135deg,#10b981,#06b6d4))" }}>
+            {upgrading ? "جاري التحديث..." : "🎨 ترقية ألعاب التلوين القديمة"}
+          </button>
         </div>
 
         {games.length === 0 ? (
