@@ -360,8 +360,11 @@ export function generateColoring(c: ColoringConfig): string {
       if(pointers.size===1){
         if(tool==='fill'){ const p=pos(e); fill(Math.floor(p.x),Math.floor(p.y),hex(color)); pushHistory(); return; }
         const p=pos(e); drawId=e.pointerId; drawing=true; sx0=p.x; sy0=p.y; pts=[{x:p.x,y:p.y}];
-        ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle=tool==='eraser'?'#ffffff':color; ctx.lineWidth=size;
-        ctx.beginPath(); ctx.arc(p.x,p.y,size/2,0,Math.PI*2); ctx.fillStyle=ctx.strokeStyle; ctx.fill();
+        ctx.lineCap='round'; ctx.lineJoin='round'; ctx.lineWidth=size;
+        ctx.globalCompositeOperation = tool==='eraser' ? 'destination-out' : 'source-over';
+        ctx.strokeStyle = tool==='eraser' ? 'rgba(0,0,0,1)' : color;
+        ctx.fillStyle = ctx.strokeStyle;
+        ctx.beginPath(); ctx.arc(p.x,p.y,size/2,0,Math.PI*2); ctx.fill();
       } else if(pointers.size===2){
         // cancel in-flight stroke (revert via history) and switch to gesture
         if(drawing){ drawing=false; pts=[]; drawId=null;
