@@ -264,7 +264,10 @@ export function generateColoring(c: ColoringConfig): string {
     </aside>
     <main id="stage" style="touch-action:none;-webkit-user-select:none;user-select:none">
       <div id="zoom" style="position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform">
-        <canvas id="cv" style="display:block;cursor:crosshair;touch-action:none;background:#fff;box-shadow:0 8px 30px rgba(0,0,0,.15)"></canvas>
+        <div id="canvasWrap" style="position:relative;display:block;background:#fff;box-shadow:0 8px 30px rgba(0,0,0,.15)">
+          <canvas id="bg" style="display:block;position:relative;z-index:1;pointer-events:none"></canvas>
+          <canvas id="cv" style="display:block;position:absolute;left:0;top:0;z-index:2;cursor:crosshair;touch-action:none;background:transparent"></canvas>
+        </div>
       </div>
       <div class="zoom-bar">
         <button class="btn" id="zin">➕</button>
