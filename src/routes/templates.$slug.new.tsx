@@ -6,11 +6,11 @@ import { Footer } from "@/components/Footer";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { generateQuiz, generateBlanks, generateMatching, generateWheel } from "@/lib/templates";
+import { generateQuiz, generateBlanks, generateMatching, generateWheel, generatePuzzle, generateDraw } from "@/lib/templates";
 
 export const Route = createFileRoute("/templates/$slug/new")({ component: NewFromTemplate });
 
-const SUPPORTED = ["quiz", "blanks", "matching", "wheel"];
+const SUPPORTED = ["quiz", "blanks", "matching", "wheel", "puzzle", "draw"];
 
 function NewFromTemplate() {
   const { slug } = Route.useParams();
