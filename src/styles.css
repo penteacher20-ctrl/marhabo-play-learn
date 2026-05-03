@@ -131,8 +131,20 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mascot-flip { transition: transform 0.001s linear !important; }
-  .float-anim, .float-anim-slow, .wiggle { animation: none !important; }
+  html:not(.force-motion) .mascot-flip { transition: transform 0.001s linear !important; }
+  html:not(.force-motion) .float-anim,
+  html:not(.force-motion) .float-anim-slow,
+  html:not(.force-motion) .wiggle { animation: none !important; }
+}
+
+html.reduce-motion .mascot-flip { transition: transform 0.001s linear !important; }
+html.reduce-motion .float-anim,
+html.reduce-motion .float-anim-slow,
+html.reduce-motion .wiggle { animation: none !important; }
+html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after {
+  animation-duration: 0.001s !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.05s !important;
 }
 
 

@@ -2,6 +2,7 @@ import { Outlet, createRootRoute, HeadContent, Scripts } from "@tanstack/react-r
 import appCss from "../styles.css?url";
 import { I18nProvider } from "@/lib/i18n";
 import { AuthProvider } from "@/lib/auth";
+import { MotionProvider } from "@/lib/motion";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -52,8 +53,10 @@ function RootComponent() {
   return (
     <AuthProvider>
       <I18nProvider>
-        <Outlet />
-        <Toaster position="top-center" richColors />
+        <MotionProvider>
+          <Outlet />
+          <Toaster position="top-center" richColors />
+        </MotionProvider>
       </I18nProvider>
     </AuthProvider>
   );

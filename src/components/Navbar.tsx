@@ -23,6 +23,14 @@ export function Navbar() {
         </nav>
 
         <div className="flex items-center gap-2">
+          <Link
+            to="/settings"
+            className="w-9 h-9 grid place-items-center rounded-full bg-secondary hover:bg-secondary/70 transition"
+            aria-label="Settings"
+            title={lang === "ar" ? "الإعدادات" : "Settings"}
+          >
+            ⚙️
+          </Link>
           <button
             onClick={() => setLang(lang === "ar" ? "en" : "ar")}
             className="px-3 py-1.5 rounded-full text-sm font-bold bg-secondary hover:bg-secondary/70 transition"
