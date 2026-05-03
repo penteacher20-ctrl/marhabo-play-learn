@@ -49,14 +49,15 @@ function UploadPage() {
     setBusy(true);
     try {
       const ts = Date.now();
-      const filePath = `${user.id}/${ts}-${file.name}`;
+      const safe = (n: string) => n.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const filePath = `${user.id}/${ts}-${safe(file.name)}`;
       const { error: upErr } = await supabase.storage.from("game-files").upload(filePath, file, { contentType: "text/html" });
       if (upErr) throw upErr;
       const { data: { publicUrl } } = supabase.storage.from("game-files").getPublicUrl(filePath);
 
       let thumbUrl: string | null = null;
       if (thumb) {
-        const tp = `${user.id}/${ts}-${thumb.name}`;
+        const tp = `${user.id}/${ts}-${safe(thumb.name)}`;
         const { error: tErr } = await supabase.storage.from("thumbnails").upload(tp, thumb);
         if (!tErr) thumbUrl = supabase.storage.from("thumbnails").getPublicUrl(tp).data.publicUrl;
       }
