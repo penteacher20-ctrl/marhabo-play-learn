@@ -6,7 +6,7 @@ import { Footer } from "@/components/Footer";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { generateQuiz, generateBlanks, generateMatching, generateWheel, generatePuzzle, generateDraw } from "@/lib/templates";
+import { generateQuiz, generateBlanks, generateMatching, generateWheel, generatePuzzle, generateDraw, generateColoring } from "@/lib/templates";
 
 export const Route = createFileRoute("/templates/$slug/new")({ component: NewFromTemplate });
 
