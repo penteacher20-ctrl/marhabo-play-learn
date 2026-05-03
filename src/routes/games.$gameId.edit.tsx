@@ -172,3 +172,17 @@ function EditGame() {
     </Wrapper>
   );
 }
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return <label className="block"><span className="block text-sm font-bold mb-1.5">{label}</span>{children}</label>;
+}
+
+function Wrapper({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen flex flex-col" style={{ background: "var(--gradient-hero)" }}>
+      <Navbar />
+      <main className="container mx-auto px-4 py-12 flex-1">{children}</main>
+      <Footer />
+    </div>
+  );
+}
