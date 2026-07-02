@@ -77,9 +77,8 @@ function NewFromTemplate() {
       return generateBlanks({ title, sentences: ss });
     }
     if (slug === "matching") {
-      const ps = pairs.filter(p => p.a.trim() && p.b.trim());
-      if (ps.length < 2) { toast.error("أضف زوجين على الأقل"); return null; }
-      return generateMatching({ title, pairs: ps });
+      // handled in submit (async uploads)
+      return "";
     }
     if (slug === "wheel") {
       const items = wheelItems.map(s => s.trim()).filter(Boolean);
