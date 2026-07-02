@@ -26,6 +26,7 @@ function NewFromTemplate() {
   const [quizQs, setQuizQs] = useState<{ q: string; options: string[]; correct: number }[]>([{ q: "", options: ["", "", "", ""], correct: 0 }]);
   const [blanksList, setBlanksList] = useState<{ text: string; answers: string[] }[]>([{ text: "عاصمة مصر هي ___ .", answers: ["القاهرة"] }]);
   const [pairs, setPairs] = useState<{ a: string; b: string }[]>([{ a: "", b: "" }, { a: "", b: "" }]);
+  const [matchImages, setMatchImages] = useState<File[]>([]);
   const [wheelItems, setWheelItems] = useState<string[]>(["", "", ""]);
   const [puzzleImage, setPuzzleImage] = useState<File | null>(null);
   const [puzzleGrid, setPuzzleGrid] = useState(3);
