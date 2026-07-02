@@ -7,6 +7,7 @@ import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { generateQuiz, generateBlanks, generateMatching, generateWheel, generatePuzzle, generateDraw, generateColoring } from "@/lib/templates";
+import cardBackAsset from "@/assets/card-back.png";
 
 export const Route = createFileRoute("/templates/$slug/new")({ component: NewFromTemplate });
 
