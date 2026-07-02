@@ -88,14 +88,36 @@ function NewFromTemplate() {
     return null;
   };
 
-  const uploadAsset = async (file: File): Promise<string> => {
+  const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8MB per image
+  const sanitizeName = (name: string) => name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 60) || "file";
+
+  const uploadAsset = async (file: File, label = "الملف"): Promise<string> => {
+    if (!file.type.startsWith("image/")) {
+      throw new Error(`${label}: يجب أن يكون صورة (PNG/JPG/WEBP)`);
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      throw new Error(`${label}: الحجم أكبر من 8 ميجابايت. الرجاء ضغط الصورة`);
+    }
     const ts = Date.now();
-    const ext = file.name.split(".").pop() || "png";
-    const path = `${user.id}/${ts}-asset.${ext}`;
+    const ext = (file.name.split(".").pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
+    const path = `${user.id}/${ts}-${sanitizeName(file.name.replace(/\.[^.]+$/, ""))}.${ext}`;
     const { error } = await supabase.storage.from("game-files").upload(path, file, { contentType: file.type });
-    if (error) throw error;
+    if (error) {
+      const m = (error.message || "").toLowerCase();
+      if (m.includes("row-level") || m.includes("unauthorized") || m.includes("permission")) {
+        throw new Error(`${label}: ليست لديك صلاحية الرفع. سجّل الدخول من جديد وحاول مرة أخرى`);
+      }
+      if (m.includes("payload") || m.includes("too large") || m.includes("size")) {
+        throw new Error(`${label}: الملف كبير جداً على الخادم`);
+      }
+      if (m.includes("network") || m.includes("fetch")) {
+        throw new Error(`${label}: مشكلة في الشبكة أثناء الرفع. تحقّق من الاتصال وحاول مجدداً`);
+      }
+      throw new Error(`${label}: فشل الرفع — ${error.message}`);
+    }
     return supabase.storage.from("game-files").getPublicUrl(path).data.publicUrl;
   };
+
 
   const submit = async () => {
     if (!title.trim()) { toast.error("أضف عنوان اللعبة"); return; }
