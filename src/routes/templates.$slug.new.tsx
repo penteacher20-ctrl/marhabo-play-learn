@@ -149,7 +149,7 @@ function NewFromTemplate() {
 
           {slug === "quiz" && <QuizBuilder qs={quizQs} setQs={setQuizQs} />}
           {slug === "blanks" && <BlanksBuilder list={blanksList} setList={setBlanksList} />}
-          {slug === "matching" && <MatchingBuilder pairs={pairs} setPairs={setPairs} />}
+          {slug === "matching" && <MatchingBuilder images={matchImages} setImages={setMatchImages} />}
           {slug === "wheel" && <WheelBuilder items={wheelItems} setItems={setWheelItems} />}
           {slug === "puzzle" && (
             <div className="space-y-3">
