@@ -7,7 +7,7 @@ import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { generateQuiz, generateBlanks, generateMatching, generateWheel, generatePuzzle, generateDraw, generateColoring } from "@/lib/templates";
-import cardBackAsset from "@/assets/card-back.png";
+import cardBackAsset from "@/assets/card-back.png.asset.json";
 
 export const Route = createFileRoute("/templates/$slug/new")({ component: NewFromTemplate });
 
@@ -115,7 +115,7 @@ function NewFromTemplate() {
         const imageUrls: string[] = [];
         for (const f of matchImages) imageUrls.push(await uploadAsset(f));
         // upload card back once (shared asset)
-        const backBlob = await (await fetch(cardBackAsset)).blob();
+        const backBlob = await (await fetch(cardBackAsset.url)).blob();
         const backFile = new File([backBlob], "card-back.png", { type: backBlob.type || "image/png" });
         const backUrl = await uploadAsset(backFile);
         html = generateMatching({ title, images: imageUrls, backUrl });
