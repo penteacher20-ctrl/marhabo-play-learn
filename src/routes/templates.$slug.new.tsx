@@ -7,6 +7,7 @@ import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { generateQuiz, generateBlanks, generateMatching, generateWheel, generatePuzzle, generateDraw, generateColoring } from "@/lib/templates";
+import cardBackAsset from "@/assets/card-back.png";
 
 export const Route = createFileRoute("/templates/$slug/new")({ component: NewFromTemplate });
 
@@ -25,6 +26,7 @@ function NewFromTemplate() {
   const [quizQs, setQuizQs] = useState<{ q: string; options: string[]; correct: number }[]>([{ q: "", options: ["", "", "", ""], correct: 0 }]);
   const [blanksList, setBlanksList] = useState<{ text: string; answers: string[] }[]>([{ text: "عاصمة مصر هي ___ .", answers: ["القاهرة"] }]);
   const [pairs, setPairs] = useState<{ a: string; b: string }[]>([{ a: "", b: "" }, { a: "", b: "" }]);
+  const [matchImages, setMatchImages] = useState<File[]>([]);
   const [wheelItems, setWheelItems] = useState<string[]>(["", "", ""]);
   const [puzzleImage, setPuzzleImage] = useState<File | null>(null);
   const [puzzleGrid, setPuzzleGrid] = useState(3);
@@ -75,9 +77,8 @@ function NewFromTemplate() {
       return generateBlanks({ title, sentences: ss });
     }
     if (slug === "matching") {
-      const ps = pairs.filter(p => p.a.trim() && p.b.trim());
-      if (ps.length < 2) { toast.error("أضف زوجين على الأقل"); return null; }
-      return generateMatching({ title, pairs: ps });
+      // handled in submit (async uploads)
+      return "";
     }
     if (slug === "wheel") {
       const items = wheelItems.map(s => s.trim()).filter(Boolean);
@@ -109,6 +110,15 @@ function NewFromTemplate() {
         if (!colorImage) { toast.error("ارفع صورة للتلوين"); setBusy(false); return; }
         const url = await uploadAsset(colorImage);
         html = generateColoring({ title, imageUrl: url });
+      } else if (slug === "matching") {
+        if (matchImages.length < 2) { toast.error("ارفع صورتين على الأقل"); setBusy(false); return; }
+        const imageUrls: string[] = [];
+        for (const f of matchImages) imageUrls.push(await uploadAsset(f));
+        // upload card back once (shared asset)
+        const backBlob = await (await fetch(cardBackAsset)).blob();
+        const backFile = new File([backBlob], "card-back.png", { type: backBlob.type || "image/png" });
+        const backUrl = await uploadAsset(backFile);
+        html = generateMatching({ title, images: imageUrls, backUrl });
       }
       if (!html) { setBusy(false); return; }
       const ts = Date.now();
@@ -139,7 +149,7 @@ function NewFromTemplate() {
 
           {slug === "quiz" && <QuizBuilder qs={quizQs} setQs={setQuizQs} />}
           {slug === "blanks" && <BlanksBuilder list={blanksList} setList={setBlanksList} />}
-          {slug === "matching" && <MatchingBuilder pairs={pairs} setPairs={setPairs} />}
+          {slug === "matching" && <MatchingBuilder images={matchImages} setImages={setMatchImages} />}
           {slug === "wheel" && <WheelBuilder items={wheelItems} setItems={setWheelItems} />}
           {slug === "puzzle" && (
             <div className="space-y-3">
@@ -244,19 +254,33 @@ function BlanksBuilder({ list, setList }: { list: any[]; setList: any }) {
   );
 }
 
-function MatchingBuilder({ pairs, setPairs }: { pairs: any[]; setPairs: any }) {
+function MatchingBuilder({ images, setImages }: { images: File[]; setImages: (f: File[]) => void }) {
+  const onAdd = (files: FileList | null) => {
+    if (!files) return;
+    setImages([...images, ...Array.from(files)]);
+  };
   return (
     <div>
-      <SectionHeader title="الأزواج" onAdd={() => setPairs([...pairs, { a: "", b: "" }])} />
-      <div className="space-y-2">
-        {pairs.map((p, i) => (
-          <div key={i} className="flex gap-2">
-            <input value={p.a} onChange={(e) => setPairs(pairs.map((x, k) => k === i ? { ...x, a: e.target.value } : x))} placeholder="عنصر A" className="input flex-1" />
-            <input value={p.b} onChange={(e) => setPairs(pairs.map((x, k) => k === i ? { ...x, b: e.target.value } : x))} placeholder="عنصر B" className="input flex-1" />
-            <button type="button" onClick={() => setPairs(pairs.filter((_, k) => k !== i))} className="px-3 rounded-xl bg-destructive/10 text-destructive font-bold">×</button>
-          </div>
-        ))}
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="font-display font-extrabold text-lg">صور اللعبة (كل صورة ستُكرَّر مرتين لتُطابَق)</h3>
+        <label className="px-3 py-1.5 rounded-full bg-primary/10 text-primary font-bold text-sm cursor-pointer">
+          + إضافة صور
+          <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => { onAdd(e.target.files); e.currentTarget.value = ""; }} />
+        </label>
       </div>
+      <p className="text-xs text-muted-foreground mb-3">أضف من 2 إلى 12 صورة. ظهر البطاقة سيكون شعار مِرحابو.</p>
+      {images.length === 0 ? (
+        <div className="text-center py-8 rounded-2xl border-2 border-dashed border-primary/30 text-muted-foreground">لم تُضِف صوراً بعد</div>
+      ) : (
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+          {images.map((f, i) => (
+            <div key={i} className="relative aspect-square rounded-xl overflow-hidden bg-secondary/40 border-2 border-primary/20">
+              <img src={URL.createObjectURL(f)} alt="" className="w-full h-full object-cover" />
+              <button type="button" onClick={() => setImages(images.filter((_, k) => k !== i))} className="absolute top-1 end-1 w-6 h-6 rounded-full bg-destructive text-white font-bold text-xs shadow">×</button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

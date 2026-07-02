@@ -97,15 +97,23 @@ export function generateBlanks(c: BlanksConfig): string {
   </script>` + tail;
 }
 
-export interface MatchingConfig { title: string; pairs: { a: string; b: string }[]; }
+export interface MatchingConfig {
+  title: string;
+  pairs?: { a: string; b: string }[];
+  images?: string[];
+  backUrl?: string;
+}
 export function generateMatching(c: MatchingConfig): string {
+  if (c.images && c.images.length && c.backUrl) {
+    return generateMatchingImages(c.title, c.images, c.backUrl);
+  }
   return baseHead(c.title) + `
   <h1>${escapeHtml(c.title)}</h1>
   <p style="margin-bottom:18px;color:#666">طابق العناصر ببعضها</p>
   <div class="grid" id="game"></div>
   <div class="result" id="res"></div>
   <script>
-    const P = ${JSON.stringify(c.pairs)};
+    const P = ${JSON.stringify(c.pairs || [])};
     const items = [];
     P.forEach((p,i)=>{ items.push({t:p.a,id:i,side:'L'}); items.push({t:p.b,id:i,side:'R'}); });
     items.sort(()=>Math.random()-0.5);
@@ -120,6 +128,56 @@ export function generateMatching(c: MatchingConfig): string {
         if(done===P.length) document.getElementById('res').textContent='🎉 أحسنت!';
       } else { const s=sel; setTimeout(()=>s.classList.remove('sel'),400); }
       sel=null;
+    });
+  </script>` + tail;
+}
+
+function generateMatchingImages(title: string, images: string[], backUrl: string): string {
+  return baseHead(title) + `
+  <style>
+    body{padding:0!important;background:linear-gradient(135deg,#fef3ff,#eef2ff)!important}
+    .card{display:contents!important}
+    .mm-app{min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:16px;gap:14px;box-sizing:border-box}
+    .mm-app h1{margin:0;font-size:clamp(1.1rem,2.6vw,1.7rem);color:#7a4fd6;text-align:center}
+    .mm-info{display:flex;gap:18px;font-weight:800;color:#7a4fd6}
+    .mm-grid{display:grid;gap:10px;width:100%;max-width:900px}
+    .mm-card{aspect-ratio:3/4;perspective:1000px;cursor:pointer}
+    .mm-inner{position:relative;width:100%;height:100%;transition:transform .5s;transform-style:preserve-3d;border-radius:14px}
+    .mm-card.flip .mm-inner,.mm-card.done .mm-inner{transform:rotateY(180deg)}
+    .mm-face{position:absolute;inset:0;backface-visibility:hidden;border-radius:14px;background-size:cover;background-position:center;box-shadow:0 6px 18px rgba(109,91,255,.25);border:3px solid #fff}
+    .mm-back{background-image:url('${backUrl}')}
+    .mm-front{transform:rotateY(180deg);background-color:#fff}
+    .mm-card.done .mm-front{box-shadow:0 0 0 4px #8EE870,0 6px 20px rgba(142,232,112,.5)}
+    .mm-result{font-size:1.4rem;font-weight:800;color:#7a4fd6;text-align:center;min-height:40px}
+  </style>
+  <div class="mm-app">
+    <h1>${escapeHtml(title)}</h1>
+    <div class="mm-info"><span>الحركات: <span id="moves">0</span></span><span>المتبقي: <span id="rem">0</span></span></div>
+    <div class="mm-grid" id="grid"></div>
+    <div class="mm-result" id="res"></div>
+  </div>
+  <script>
+    const IMGS = ${JSON.stringify(images)};
+    const deck = [];
+    IMGS.forEach((u,i)=>{ deck.push({u,id:i}); deck.push({u,id:i}); });
+    for(let i=deck.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [deck[i],deck[j]]=[deck[j],deck[i]]; }
+    const n = deck.length;
+    const cols = Math.min(6, Math.ceil(Math.sqrt(n*0.75)));
+    const grid = document.getElementById('grid');
+    grid.style.gridTemplateColumns = 'repeat('+cols+',1fr)';
+    grid.innerHTML = deck.map((c,k)=>'<div class="mm-card" data-k="'+k+'" data-id="'+c.id+'"><div class="mm-inner"><div class="mm-face mm-back"></div><div class="mm-face mm-front" style="background-image:url(\\''+c.u+'\\')"></div></div></div>').join('');
+    let a=null, lock=false, done=0, moves=0;
+    const remEl=document.getElementById('rem'), movesEl=document.getElementById('moves');
+    remEl.textContent = IMGS.length;
+    grid.querySelectorAll('.mm-card').forEach(el=>el.onclick=()=>{
+      if(lock||el.classList.contains('done')||el.classList.contains('flip'))return;
+      el.classList.add('flip');
+      if(!a){ a=el; return; }
+      moves++; movesEl.textContent=moves;
+      const b=el;
+      if(a.dataset.id===b.dataset.id){ a.classList.add('done'); b.classList.add('done'); a=null; done++; remEl.textContent=IMGS.length-done;
+        if(done===IMGS.length){ document.getElementById('res').textContent='🎉 أحسنت! في '+moves+' حركة'; }
+      } else { lock=true; setTimeout(()=>{ a.classList.remove('flip'); b.classList.remove('flip'); a=null; lock=false; },800); }
     });
   </script>` + tail;
 }
