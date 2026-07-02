@@ -88,53 +88,93 @@ function NewFromTemplate() {
     return null;
   };
 
-  const uploadAsset = async (file: File): Promise<string> => {
+  const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8MB per image
+  const sanitizeName = (name: string) => name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 60) || "file";
+
+  const uploadAsset = async (file: File, label = "الملف"): Promise<string> => {
+    if (!file.type.startsWith("image/")) {
+      throw new Error(`${label}: يجب أن يكون صورة (PNG/JPG/WEBP)`);
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      throw new Error(`${label}: الحجم أكبر من 8 ميجابايت. الرجاء ضغط الصورة`);
+    }
     const ts = Date.now();
-    const ext = file.name.split(".").pop() || "png";
-    const path = `${user.id}/${ts}-asset.${ext}`;
+    const ext = (file.name.split(".").pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
+    const path = `${user.id}/${ts}-${sanitizeName(file.name.replace(/\.[^.]+$/, ""))}.${ext}`;
     const { error } = await supabase.storage.from("game-files").upload(path, file, { contentType: file.type });
-    if (error) throw error;
+    if (error) {
+      const m = (error.message || "").toLowerCase();
+      if (m.includes("row-level") || m.includes("unauthorized") || m.includes("permission")) {
+        throw new Error(`${label}: ليست لديك صلاحية الرفع. سجّل الدخول من جديد وحاول مرة أخرى`);
+      }
+      if (m.includes("payload") || m.includes("too large") || m.includes("size")) {
+        throw new Error(`${label}: الملف كبير جداً على الخادم`);
+      }
+      if (m.includes("network") || m.includes("fetch")) {
+        throw new Error(`${label}: مشكلة في الشبكة أثناء الرفع. تحقّق من الاتصال وحاول مجدداً`);
+      }
+      throw new Error(`${label}: فشل الرفع — ${error.message}`);
+    }
     return supabase.storage.from("game-files").getPublicUrl(path).data.publicUrl;
   };
+
 
   const submit = async () => {
     if (!title.trim()) { toast.error("أضف عنوان اللعبة"); return; }
     setBusy(true);
+    const loadingId = toast.loading("جاري إنشاء اللعبة...");
     try {
       let html = buildHtml();
       if (slug === "puzzle") {
-        if (!puzzleImage) { toast.error("ارفع صورة للبازل"); setBusy(false); return; }
-        const url = await uploadAsset(puzzleImage);
+        if (!puzzleImage) { toast.dismiss(loadingId); toast.error("ارفع صورة للبازل أولاً"); setBusy(false); return; }
+        toast.loading("رفع صورة البازل...", { id: loadingId });
+        const url = await uploadAsset(puzzleImage, "صورة البازل");
         html = generatePuzzle({ title, imageUrl: url, rows: puzzleGrid, cols: puzzleGrid });
       } else if (slug === "draw") {
-        if (!colorImage) { toast.error("ارفع صورة للتلوين"); setBusy(false); return; }
-        const url = await uploadAsset(colorImage);
+        if (!colorImage) { toast.dismiss(loadingId); toast.error("ارفع صورة للتلوين أولاً"); setBusy(false); return; }
+        toast.loading("رفع صورة التلوين...", { id: loadingId });
+        const url = await uploadAsset(colorImage, "صورة التلوين");
         html = generateColoring({ title, imageUrl: url });
       } else if (slug === "matching") {
-        if (matchImages.length < 2) { toast.error("ارفع صورتين على الأقل"); setBusy(false); return; }
+        if (matchImages.length < 2) { toast.dismiss(loadingId); toast.error("ارفع صورتين على الأقل للعبة المطابقة"); setBusy(false); return; }
         const imageUrls: string[] = [];
-        for (const f of matchImages) imageUrls.push(await uploadAsset(f));
-        // upload card back once (shared asset)
-        const backBlob = await (await fetch(cardBackAsset.url)).blob();
-        const backFile = new File([backBlob], "card-back.png", { type: backBlob.type || "image/png" });
-        const backUrl = await uploadAsset(backFile);
+        for (let i = 0; i < matchImages.length; i++) {
+          toast.loading(`رفع الصورة ${i + 1} من ${matchImages.length}...`, { id: loadingId });
+          imageUrls.push(await uploadAsset(matchImages[i], `الصورة ${i + 1}`));
+        }
+        toast.loading("تجهيز البطاقات...", { id: loadingId });
+        let backUrl: string;
+        try {
+          const backRes = await fetch(cardBackAsset.url);
+          if (!backRes.ok) throw new Error(`HTTP ${backRes.status}`);
+          const backBlob = await backRes.blob();
+          const backFile = new File([backBlob], "card-back.png", { type: backBlob.type || "image/png" });
+          backUrl = await uploadAsset(backFile, "ظهر البطاقة");
+        } catch (e: any) {
+          throw new Error(`تعذّر تجهيز ظهر البطاقات: ${e.message || e}`);
+        }
         html = generateMatching({ title, images: imageUrls, backUrl });
       }
-      if (!html) { setBusy(false); return; }
+      if (!html) { toast.dismiss(loadingId); setBusy(false); return; }
+      toast.loading("حفظ اللعبة...", { id: loadingId });
       const ts = Date.now();
       const path = `${user.id}/${ts}-${slug}.html`;
       const blob = new Blob([html], { type: "text/html" });
       const { error: upErr } = await supabase.storage.from("game-files").upload(path, blob, { contentType: "text/html" });
-      if (upErr) throw upErr;
+      if (upErr) throw new Error(`فشل حفظ ملف اللعبة: ${upErr.message}`);
       const { data: { publicUrl } } = supabase.storage.from("game-files").getPublicUrl(path);
       const { data: game, error } = await supabase.from("games").insert({
         user_id: user.id, title, type: `template:${slug}`, file_url: publicUrl, is_public: isPublic,
       }).select().single();
-      if (error) throw error;
-      toast.success("تم إنشاء اللعبة! 🎉");
+      if (error) throw new Error(`فشل حفظ اللعبة في قاعدة البيانات: ${error.message}`);
+      toast.success("تم إنشاء اللعبة! 🎉", { id: loadingId });
       navigate({ to: "/play/$gameId", params: { gameId: game.id } });
-    } catch (err: any) { toast.error(err.message); } finally { setBusy(false); }
+    } catch (err: any) {
+      console.error("[template submit]", err);
+      toast.error(err?.message || "حدث خطأ غير متوقع أثناء إنشاء اللعبة", { id: loadingId, duration: 6000 });
+    } finally { setBusy(false); }
   };
+
 
   return (
     <Wrapper>
