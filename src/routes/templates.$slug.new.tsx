@@ -110,6 +110,15 @@ function NewFromTemplate() {
         if (!colorImage) { toast.error("ارفع صورة للتلوين"); setBusy(false); return; }
         const url = await uploadAsset(colorImage);
         html = generateColoring({ title, imageUrl: url });
+      } else if (slug === "matching") {
+        if (matchImages.length < 2) { toast.error("ارفع صورتين على الأقل"); setBusy(false); return; }
+        const imageUrls: string[] = [];
+        for (const f of matchImages) imageUrls.push(await uploadAsset(f));
+        // upload card back once (shared asset)
+        const backBlob = await (await fetch(cardBackAsset)).blob();
+        const backFile = new File([backBlob], "card-back.png", { type: backBlob.type || "image/png" });
+        const backUrl = await uploadAsset(backFile);
+        html = generateMatching({ title, images: imageUrls, backUrl });
       }
       if (!html) { setBusy(false); return; }
       const ts = Date.now();
