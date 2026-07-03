@@ -8,6 +8,11 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { generateQuiz, generateBlanks, generateMatching, generateWheel, generatePuzzle, generateDraw, generateColoring } from "@/lib/templates";
 import cardBackAsset from "@/assets/card-back.png.asset.json";
+import { Progress } from "@/components/ui/progress";
+import { Loader2, CheckCircle2, XCircle } from "lucide-react";
+
+type StageStatus = "pending" | "uploading" | "done" | "error";
+type Stage = { id: string; label: string; status: StageStatus; progress: number; error?: string };
 
 export const Route = createFileRoute("/templates/$slug/new")({ component: NewFromTemplate });
 
@@ -21,6 +26,9 @@ function NewFromTemplate() {
   const [title, setTitle] = useState("");
   const [isPublic, setIsPublic] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [stages, setStages] = useState<Stage[]>([]);
+  const updateStage = (id: string, patch: Partial<Stage>) =>
+    setStages(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s));
 
   // builder state
   const [quizQs, setQuizQs] = useState<{ q: string; options: string[]; correct: number }[]>([{ q: "", options: ["", "", "", ""], correct: 0 }]);
@@ -91,7 +99,7 @@ function NewFromTemplate() {
   const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8MB per image
   const sanitizeName = (name: string) => name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 60) || "file";
 
-  const uploadAsset = async (file: File, label = "الملف"): Promise<string> => {
+  const uploadAsset = async (file: File, label: string, stageId: string): Promise<string> => {
     if (!file.type.startsWith("image/")) {
       throw new Error(`${label}: يجب أن يكون صورة (PNG/JPG/WEBP)`);
     }
@@ -101,77 +109,119 @@ function NewFromTemplate() {
     const ts = Date.now();
     const ext = (file.name.split(".").pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
     const path = `${user.id}/${ts}-${sanitizeName(file.name.replace(/\.[^.]+$/, ""))}.${ext}`;
-    const { error } = await supabase.storage.from("game-files").upload(path, file, { contentType: file.type });
-    if (error) {
-      const m = (error.message || "").toLowerCase();
-      if (m.includes("row-level") || m.includes("unauthorized") || m.includes("permission")) {
-        throw new Error(`${label}: ليست لديك صلاحية الرفع. سجّل الدخول من جديد وحاول مرة أخرى`);
-      }
-      if (m.includes("payload") || m.includes("too large") || m.includes("size")) {
-        throw new Error(`${label}: الملف كبير جداً على الخادم`);
-      }
-      if (m.includes("network") || m.includes("fetch")) {
-        throw new Error(`${label}: مشكلة في الشبكة أثناء الرفع. تحقّق من الاتصال وحاول مجدداً`);
-      }
-      throw new Error(`${label}: فشل الرفع — ${error.message}`);
-    }
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    const supaUrl = (import.meta.env.VITE_SUPABASE_URL as string) || "";
+    const apiKey = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string) || (import.meta.env.VITE_SUPABASE_ANON_KEY as string) || "";
+
+    updateStage(stageId, { status: "uploading", progress: 0 });
+
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `${supaUrl}/storage/v1/object/game-files/${path}`);
+      xhr.setRequestHeader("apikey", apiKey);
+      if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      xhr.setRequestHeader("x-upsert", "false");
+      xhr.setRequestHeader("Content-Type", file.type);
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          updateStage(stageId, { progress: Math.round((e.loaded / e.total) * 100) });
+        }
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve();
+        else {
+          const raw = xhr.responseText || "";
+          const m = raw.toLowerCase();
+          if (xhr.status === 401 || xhr.status === 403 || m.includes("row-level") || m.includes("unauthorized")) {
+            reject(new Error(`${label}: ليست لديك صلاحية الرفع. سجّل الدخول من جديد وحاول مرة أخرى`));
+          } else if (xhr.status === 413 || m.includes("too large") || m.includes("payload")) {
+            reject(new Error(`${label}: الملف كبير جداً على الخادم`));
+          } else {
+            reject(new Error(`${label}: فشل الرفع (${xhr.status})`));
+          }
+        }
+      };
+      xhr.onerror = () => reject(new Error(`${label}: مشكلة في الشبكة أثناء الرفع`));
+      xhr.onabort = () => reject(new Error(`${label}: تم إلغاء الرفع`));
+      xhr.send(file);
+    }).then(() => {
+      updateStage(stageId, { status: "done", progress: 100 });
+    }).catch((e) => {
+      updateStage(stageId, { status: "error", error: e.message });
+      throw e;
+    });
+
     return supabase.storage.from("game-files").getPublicUrl(path).data.publicUrl;
   };
 
 
   const submit = async () => {
     if (!title.trim()) { toast.error("أضف عنوان اللعبة"); return; }
+    // pre-validate & build stage list
+    const plan: Stage[] = [];
+    if (slug === "puzzle") {
+      if (!puzzleImage) { toast.error("ارفع صورة للبازل أولاً"); return; }
+      plan.push({ id: "puzzle", label: "صورة البازل", status: "pending", progress: 0 });
+    } else if (slug === "draw") {
+      if (!colorImage) { toast.error("ارفع صورة للتلوين أولاً"); return; }
+      plan.push({ id: "draw", label: "صورة التلوين", status: "pending", progress: 0 });
+    } else if (slug === "matching") {
+      if (matchImages.length < 2) { toast.error("ارفع صورتين على الأقل للعبة المطابقة"); return; }
+      matchImages.forEach((_, i) => plan.push({ id: `m-${i}`, label: `الصورة ${i + 1}`, status: "pending", progress: 0 }));
+      plan.push({ id: "back", label: "ظهر البطاقة", status: "pending", progress: 0 });
+    }
+    plan.push({ id: "save", label: "حفظ اللعبة", status: "pending", progress: 0 });
+    setStages(plan);
     setBusy(true);
-    const loadingId = toast.loading("جاري إنشاء اللعبة...");
+
     try {
       let html = buildHtml();
       if (slug === "puzzle") {
-        if (!puzzleImage) { toast.dismiss(loadingId); toast.error("ارفع صورة للبازل أولاً"); setBusy(false); return; }
-        toast.loading("رفع صورة البازل...", { id: loadingId });
-        const url = await uploadAsset(puzzleImage, "صورة البازل");
+        const url = await uploadAsset(puzzleImage!, "صورة البازل", "puzzle");
         html = generatePuzzle({ title, imageUrl: url, rows: puzzleGrid, cols: puzzleGrid });
       } else if (slug === "draw") {
-        if (!colorImage) { toast.dismiss(loadingId); toast.error("ارفع صورة للتلوين أولاً"); setBusy(false); return; }
-        toast.loading("رفع صورة التلوين...", { id: loadingId });
-        const url = await uploadAsset(colorImage, "صورة التلوين");
+        const url = await uploadAsset(colorImage!, "صورة التلوين", "draw");
         html = generateColoring({ title, imageUrl: url });
       } else if (slug === "matching") {
-        if (matchImages.length < 2) { toast.dismiss(loadingId); toast.error("ارفع صورتين على الأقل للعبة المطابقة"); setBusy(false); return; }
         const imageUrls: string[] = [];
         for (let i = 0; i < matchImages.length; i++) {
-          toast.loading(`رفع الصورة ${i + 1} من ${matchImages.length}...`, { id: loadingId });
-          imageUrls.push(await uploadAsset(matchImages[i], `الصورة ${i + 1}`));
+          imageUrls.push(await uploadAsset(matchImages[i], `الصورة ${i + 1}`, `m-${i}`));
         }
-        toast.loading("تجهيز البطاقات...", { id: loadingId });
         let backUrl: string;
         try {
           const backRes = await fetch(cardBackAsset.url);
           if (!backRes.ok) throw new Error(`HTTP ${backRes.status}`);
           const backBlob = await backRes.blob();
           const backFile = new File([backBlob], "card-back.png", { type: backBlob.type || "image/png" });
-          backUrl = await uploadAsset(backFile, "ظهر البطاقة");
+          backUrl = await uploadAsset(backFile, "ظهر البطاقة", "back");
         } catch (e: any) {
+          updateStage("back", { status: "error", error: e.message });
           throw new Error(`تعذّر تجهيز ظهر البطاقات: ${e.message || e}`);
         }
         html = generateMatching({ title, images: imageUrls, backUrl });
       }
-      if (!html) { toast.dismiss(loadingId); setBusy(false); return; }
-      toast.loading("حفظ اللعبة...", { id: loadingId });
+      if (!html) { setBusy(false); return; }
+
+      updateStage("save", { status: "uploading", progress: 30 });
       const ts = Date.now();
       const path = `${user.id}/${ts}-${slug}.html`;
       const blob = new Blob([html], { type: "text/html" });
       const { error: upErr } = await supabase.storage.from("game-files").upload(path, blob, { contentType: "text/html" });
-      if (upErr) throw new Error(`فشل حفظ ملف اللعبة: ${upErr.message}`);
+      if (upErr) { updateStage("save", { status: "error", error: upErr.message }); throw new Error(`فشل حفظ ملف اللعبة: ${upErr.message}`); }
+      updateStage("save", { progress: 70 });
       const { data: { publicUrl } } = supabase.storage.from("game-files").getPublicUrl(path);
       const { data: game, error } = await supabase.from("games").insert({
         user_id: user.id, title, type: `template:${slug}`, file_url: publicUrl, is_public: isPublic,
       }).select().single();
-      if (error) throw new Error(`فشل حفظ اللعبة في قاعدة البيانات: ${error.message}`);
-      toast.success("تم إنشاء اللعبة! 🎉", { id: loadingId });
+      if (error) { updateStage("save", { status: "error", error: error.message }); throw new Error(`فشل حفظ اللعبة في قاعدة البيانات: ${error.message}`); }
+      updateStage("save", { status: "done", progress: 100 });
+      toast.success("تم إنشاء اللعبة! 🎉");
       navigate({ to: "/play/$gameId", params: { gameId: game.id } });
     } catch (err: any) {
       console.error("[template submit]", err);
-      toast.error(err?.message || "حدث خطأ غير متوقع أثناء إنشاء اللعبة", { id: loadingId, duration: 6000 });
+      toast.error(err?.message || "حدث خطأ غير متوقع أثناء إنشاء اللعبة", { duration: 6000 });
     } finally { setBusy(false); }
   };
 
@@ -219,8 +269,32 @@ function NewFromTemplate() {
             </div>
           </div>
 
-          <button disabled={busy} onClick={submit} className="bubble-btn text-white w-full disabled:opacity-60" style={{ background: "var(--gradient-primary)" }}>
-            {busy ? "..." : "🚀 إنشاء اللعبة"}
+          {stages.length > 0 && (
+            <div className="rounded-2xl bg-secondary/40 border-2 border-primary/10 p-4 space-y-3">
+              {stages.map((s) => (
+                <div key={s.id} className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2 text-sm">
+                    <div className="flex items-center gap-2 font-bold">
+                      {s.status === "uploading" && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
+                      {s.status === "done" && <CheckCircle2 className="w-4 h-4 text-green-600" />}
+                      {s.status === "error" && <XCircle className="w-4 h-4 text-destructive" />}
+                      {s.status === "pending" && <span className="w-4 h-4 rounded-full border-2 border-muted-foreground/40" />}
+                      <span>{s.label}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {s.status === "error" ? "فشل" : s.status === "done" ? "تم" : `${s.progress}%`}
+                    </span>
+                  </div>
+                  <Progress value={s.status === "error" ? 100 : s.progress} className={s.status === "error" ? "[&>div]:bg-destructive" : s.status === "done" ? "[&>div]:bg-green-600" : ""} />
+                  {s.error && <p className="text-xs text-destructive">{s.error}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button disabled={busy} onClick={submit} className="bubble-btn text-white w-full disabled:opacity-60 flex items-center justify-center gap-2" style={{ background: "var(--gradient-primary)" }}>
+            {busy && <Loader2 className="w-5 h-5 animate-spin" />}
+            {busy ? "جاري الإنشاء..." : "🚀 إنشاء اللعبة"}
           </button>
         </div>
       </div>
