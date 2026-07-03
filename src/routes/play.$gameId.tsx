@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Navbar } from "@/components/Navbar";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
-import { generateColoring, generatePuzzle, generateMatching, generateWheel, generateQuiz, generateBlanks } from "@/lib/templates";
+import { generateColoring, generatePuzzle, generateMatching, generateWheel, generateQuiz, generateBlanks, generateTower, type TowerQuestion } from "@/lib/templates";
 
 export const Route = createFileRoute("/play/$gameId")({ component: PlayPage });
 
@@ -108,6 +108,9 @@ function PlayPage() {
               } else if (gtype === "template:blanks") {
                 const sentences = extractJsonConst<{ text: string; answers: string[] }[]>(txt, "S");
                 if (sentences) txt = generateBlanks({ title: gtitle, sentences });
+              } else if (gtype === "template:tower") {
+                const qs = extractJsonConst<TowerQuestion[]>(txt, "Q");
+                if (qs) txt = generateTower({ title: gtitle, questions: qs });
               }
             } catch (regenErr) {
               console.warn("template auto-upgrade failed, using stored HTML", regenErr);
