@@ -28,12 +28,15 @@ function PlayPage() {
   const [creator, setCreator] = useState<string>("");
   const [showEmbed, setShowEmbed] = useState(false);
   const [html, setHtml] = useState<string>("");
+  const [loadError, setLoadError] = useState<string>("");
+  const [reloadKey, setReloadKey] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fit, setFit] = useState<FitMode>("auto");
   const wrapRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
+
     (async () => {
       const { data } = await supabase.from("games").select("*").eq("id", gameId).maybeSingle();
       if (data) {
