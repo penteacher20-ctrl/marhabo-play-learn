@@ -1,5 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { validateTemplateSave } from "@/lib/templates.functions";
 import { toast } from "sonner";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -157,8 +159,13 @@ function NewFromTemplate() {
   };
 
 
+  const submittingRef = useRef(false);
+  const validateOnServer = useServerFn(validateTemplateSave);
+
   const submit = async () => {
+    if (submittingRef.current || busy) return; // prevent duplicate submissions
     if (!title.trim()) { toast.error("أضف عنوان اللعبة"); return; }
+    if (title.trim().length > 200) { toast.error("العنوان طويل جداً (حدّ 200 حرف)"); return; }
     // pre-validate & build stage list
     const plan: Stage[] = [];
     if (slug === "puzzle") {
@@ -169,25 +176,30 @@ function NewFromTemplate() {
       plan.push({ id: "draw", label: "صورة التلوين", status: "pending", progress: 0 });
     } else if (slug === "matching") {
       if (matchImages.length < 2) { toast.error("ارفع صورتين على الأقل للعبة المطابقة"); return; }
+      if (matchImages.length > 12) { toast.error("الحدّ الأقصى 12 صورة للعبة المطابقة"); return; }
       matchImages.forEach((_, i) => plan.push({ id: `m-${i}`, label: `الصورة ${i + 1}`, status: "pending", progress: 0 }));
       plan.push({ id: "back", label: "ظهر البطاقة", status: "pending", progress: 0 });
     }
+    plan.push({ id: "verify", label: "التحقق من الصور على الخادم", status: "pending", progress: 0 });
     plan.push({ id: "save", label: "حفظ اللعبة", status: "pending", progress: 0 });
     setStages(plan);
+    submittingRef.current = true;
     setBusy(true);
 
     try {
       let html = buildHtml();
+      const userImageUrls: string[] = [];
       if (slug === "puzzle") {
         const url = await uploadAsset(puzzleImage!, "صورة البازل", "puzzle");
+        userImageUrls.push(url);
         html = generatePuzzle({ title, imageUrl: url, rows: puzzleGrid, cols: puzzleGrid });
       } else if (slug === "draw") {
         const url = await uploadAsset(colorImage!, "صورة التلوين", "draw");
+        userImageUrls.push(url);
         html = generateColoring({ title, imageUrl: url });
       } else if (slug === "matching") {
-        const imageUrls: string[] = [];
         for (let i = 0; i < matchImages.length; i++) {
-          imageUrls.push(await uploadAsset(matchImages[i], `الصورة ${i + 1}`, `m-${i}`));
+          userImageUrls.push(await uploadAsset(matchImages[i], `الصورة ${i + 1}`, `m-${i}`));
         }
         let backUrl: string;
         try {
@@ -200,9 +212,20 @@ function NewFromTemplate() {
           updateStage("back", { status: "error", error: e.message });
           throw new Error(`تعذّر تجهيز ظهر البطاقات: ${e.message || e}`);
         }
-        html = generateMatching({ title, images: imageUrls, backUrl });
+        html = generateMatching({ title, images: userImageUrls, backUrl });
       }
-      if (!html) { setBusy(false); return; }
+      if (!html) { throw new Error("تعذّر إنشاء محتوى اللعبة"); }
+
+      // Server-side validation (defense in depth)
+      updateStage("verify", { status: "uploading", progress: 40 });
+      try {
+        await validateOnServer({ data: { slug, title: title.trim(), imageUrls: userImageUrls } });
+        updateStage("verify", { status: "done", progress: 100 });
+      } catch (e: any) {
+        const msg = e?.message || "فشل التحقق من الخادم";
+        updateStage("verify", { status: "error", error: msg });
+        throw new Error(msg);
+      }
 
       updateStage("save", { status: "uploading", progress: 30 });
       const ts = Date.now();
@@ -213,7 +236,7 @@ function NewFromTemplate() {
       updateStage("save", { progress: 70 });
       const { data: { publicUrl } } = supabase.storage.from("game-files").getPublicUrl(path);
       const { data: game, error } = await supabase.from("games").insert({
-        user_id: user.id, title, type: `template:${slug}`, file_url: publicUrl, is_public: isPublic,
+        user_id: user.id, title: title.trim(), type: `template:${slug}`, file_url: publicUrl, is_public: isPublic,
       }).select().single();
       if (error) { updateStage("save", { status: "error", error: error.message }); throw new Error(`فشل حفظ اللعبة في قاعدة البيانات: ${error.message}`); }
       updateStage("save", { status: "done", progress: 100 });
@@ -222,7 +245,10 @@ function NewFromTemplate() {
     } catch (err: any) {
       console.error("[template submit]", err);
       toast.error(err?.message || "حدث خطأ غير متوقع أثناء إنشاء اللعبة", { duration: 6000 });
-    } finally { setBusy(false); }
+    } finally {
+      submittingRef.current = false;
+      setBusy(false);
+    }
   };
 
 
@@ -232,7 +258,15 @@ function NewFromTemplate() {
         <h1 className="text-4xl md:text-5xl font-display font-black text-center mb-2">إنشاء لعبة من قالب</h1>
         <p className="text-center text-muted-foreground mb-8">القالب: <span className="font-bold text-primary">{slug}</span></p>
 
-        <div className="card-pop p-6 md:p-8 space-y-5">
+        <fieldset disabled={busy} className="card-pop p-6 md:p-8 space-y-5 group/form disabled:opacity-70 disabled:cursor-not-allowed relative">
+          {busy && (
+            <div aria-live="polite" className="absolute inset-0 z-10 bg-background/40 backdrop-blur-[1px] rounded-3xl flex items-start justify-center pt-4 pointer-events-none">
+              <div className="flex items-center gap-2 bg-background/90 border-2 border-primary/20 rounded-full px-4 py-2 shadow-lg">
+                <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                <span className="font-bold text-sm">جاري الإنشاء — يرجى عدم إغلاق الصفحة</span>
+              </div>
+            </div>
+          )}
           <Field label={tr("game_title")}>
             <input value={title} onChange={(e) => setTitle(e.target.value)} className="input" required />
           </Field>
@@ -296,7 +330,7 @@ function NewFromTemplate() {
             {busy && <Loader2 className="w-5 h-5 animate-spin" />}
             {busy ? "جاري الإنشاء..." : "🚀 إنشاء اللعبة"}
           </button>
-        </div>
+        </fieldset>
       </div>
       <style>{`.input{width:100%;padding:.65rem 1rem;border-radius:1rem;background:#fff;border:2px solid var(--color-border);font:inherit;outline:none}.input:focus{border-color:var(--color-primary)}`}</style>
     </Wrapper>
