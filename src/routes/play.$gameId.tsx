@@ -43,16 +43,28 @@ function PlayPage() {
         if (p) setCreator((p as any).name ?? "");
         if ((data as Game).file_url) {
           try {
-            const res = await fetch((data as Game).file_url!);
+            const fileUrl = (data as Game).file_url!;
+            const res = await fetch(fileUrl);
             let txt = await res.text();
             const isColoring = (data as Game).type === "template:draw" && /const\s+SRC\s*=/.test(txt);
             const isPuzzle = (data as Game).type?.startsWith("template:puzzle") && /const\s+SRC\s*=/.test(txt);
+            const isZip = (data as Game).type === "html-zip";
             const imageUrl = (isColoring || isPuzzle) ? extractSrc(txt) : null;
             if (isColoring && imageUrl) {
               txt = generateColoring({ title: (data as Game).title, imageUrl });
             } else if (isPuzzle && imageUrl) {
               const grid = extractPuzzleGrid(txt);
               txt = generatePuzzle({ title: (data as Game).title, imageUrl, rows: grid, cols: grid });
+            }
+            // For zipped multi-file games, inject <base href> so relative assets resolve under srcDoc
+            if (isZip) {
+              const baseHref = fileUrl.replace(/[^/]*$/, "");
+              const baseTag = `<base href="${baseHref}">`;
+              if (/<head([^>]*)>/i.test(txt)) {
+                txt = txt.replace(/<head([^>]*)>/i, `<head$1>${baseTag}`);
+              } else {
+                txt = `${baseTag}${txt}`;
+              }
             }
             txt = txt.replace(
               ".card{display:none!important}",
@@ -65,6 +77,7 @@ function PlayPage() {
                 `<head$1><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />`,
               );
             }
+
             // Inject auto-resize helper that fires resize on orientation change
             const resizeScript = `<script>(function(){function fire(){try{window.dispatchEvent(new Event('resize'));}catch(e){}}window.addEventListener('orientationchange',function(){setTimeout(fire,150);});window.addEventListener('message',function(e){if(e&&e.data==='lov-fit')fire();});setTimeout(fire,200);})();</script>`;
             // Celebration: confetti + sound + overlay when game completes (detects 🎉 anywhere in DOM)
