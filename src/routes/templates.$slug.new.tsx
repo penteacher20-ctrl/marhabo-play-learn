@@ -26,6 +26,9 @@ function NewFromTemplate() {
   const [title, setTitle] = useState("");
   const [isPublic, setIsPublic] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [stages, setStages] = useState<Stage[]>([]);
+  const updateStage = (id: string, patch: Partial<Stage>) =>
+    setStages(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s));
 
   // builder state
   const [quizQs, setQuizQs] = useState<{ q: string; options: string[]; correct: number }[]>([{ q: "", options: ["", "", "", ""], correct: 0 }]);
