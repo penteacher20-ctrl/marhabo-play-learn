@@ -8,7 +8,7 @@ import { Footer } from "@/components/Footer";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { generateQuiz, generateBlanks, generateMatching, generateWheel, generatePuzzle, generateDraw, generateColoring } from "@/lib/templates";
+import { generateQuiz, generateBlanks, generateMatching, generateWheel, generatePuzzle, generateDraw, generateColoring, generateTower, type TowerQuestion } from "@/lib/templates";
 import cardBackAsset from "@/assets/card-back.png.asset.json";
 import { Progress } from "@/components/ui/progress";
 import { Loader2, CheckCircle2, XCircle } from "lucide-react";
