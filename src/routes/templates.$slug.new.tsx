@@ -258,7 +258,15 @@ function NewFromTemplate() {
         <h1 className="text-4xl md:text-5xl font-display font-black text-center mb-2">إنشاء لعبة من قالب</h1>
         <p className="text-center text-muted-foreground mb-8">القالب: <span className="font-bold text-primary">{slug}</span></p>
 
-        <div className="card-pop p-6 md:p-8 space-y-5">
+        <fieldset disabled={busy} className="card-pop p-6 md:p-8 space-y-5 group/form disabled:opacity-70 disabled:cursor-not-allowed relative">
+          {busy && (
+            <div aria-live="polite" className="absolute inset-0 z-10 bg-background/40 backdrop-blur-[1px] rounded-3xl flex items-start justify-center pt-4 pointer-events-none">
+              <div className="flex items-center gap-2 bg-background/90 border-2 border-primary/20 rounded-full px-4 py-2 shadow-lg">
+                <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                <span className="font-bold text-sm">جاري الإنشاء — يرجى عدم إغلاق الصفحة</span>
+              </div>
+            </div>
+          )}
           <Field label={tr("game_title")}>
             <input value={title} onChange={(e) => setTitle(e.target.value)} className="input" required />
           </Field>
