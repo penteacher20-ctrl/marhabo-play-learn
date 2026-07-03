@@ -265,6 +265,17 @@ function PlayPage() {
               </button>
             </div>
           </div>
+        ) : game.type === "embed" && game.file_url ? (
+          <iframe
+            ref={iframeRef}
+            src={game.file_url}
+            title={game.title}
+            className="block border-0"
+            style={{ ...iframeStyle, minHeight: isFullscreen ? "100vh" : "calc(100vh - 110px)" }}
+            allowFullScreen
+            allow="autoplay; fullscreen; encrypted-media; gyroscope; picture-in-picture"
+            onError={() => setLoadError("فشل تحميل اللعبة المضمّنة")}
+          />
         ) : html ? (
           <iframe
             ref={iframeRef}
