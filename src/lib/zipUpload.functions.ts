@@ -14,10 +14,71 @@ const inputSchema = z.object({
 
 const BAD_PATH = /(^|\/)\.\.($|\/)|\\|^\/|:/;
 
+const uploadPlanSchema = z.object({
+  title: z.string().trim().min(1, "أضف عنوان اللعبة").max(200, "العنوان طويل جداً"),
+  indexRel: z.string().min(1, "نقطة الدخول مفقودة"),
+  files: z.array(z.object({
+    rel: z.string().min(1, "اسم ملف غير صالح"),
+    size: z.number().int().nonnegative(),
+    contentType: z.string().min(1).max(120),
+  })).min(1, "الأرشيف فارغ"),
+});
+
+function validateRelativePath(path: string) {
+  if (BAD_PATH.test(path)) throw new Error(`مسار غير آمن داخل الأرشيف: ${path}`);
+  if (path.startsWith(".") || path.includes("//")) throw new Error(`مسار غير آمن داخل الأرشيف: ${path}`);
+  if (!/^[a-zA-Z0-9._\-/]+$/.test(path)) throw new Error(`اسم ملف غير مسموح بعد التنظيف: ${path}`);
+}
+
+export const createZipUploadPlan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => uploadPlanSchema.parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { files, indexRel } = data;
+
+    if (files.length > MAX_FILES) throw new Error(`عدد الملفات يتجاوز الحد المسموح (${MAX_FILES})`);
+    validateRelativePath(indexRel);
+    if (!/(^|\/)index\.html?$/i.test(indexRel)) throw new Error("نقطة الدخول يجب أن تكون index.html");
+
+    let total = 0;
+    const seen = new Set<string>();
+    for (const file of files) {
+      validateRelativePath(file.rel);
+      if (seen.has(file.rel)) throw new Error(`ملف مكرر داخل الأرشيف: ${file.rel}`);
+      seen.add(file.rel);
+      if (file.size > MAX_FILE_BYTES) throw new Error(`ملف ${file.rel.split("/").pop()} أكبر من ${MAX_FILE_BYTES / 1024 / 1024}MB`);
+      total += file.size;
+      if (total > MAX_TOTAL_BYTES) throw new Error(`الحجم الإجمالي ${(total / 1024 / 1024).toFixed(1)}MB أكبر من ${MAX_TOTAL_BYTES / 1024 / 1024}MB`);
+    }
+    if (!seen.has(indexRel)) throw new Error("لا يوجد index.html داخل الملفات المحددة");
+
+    const baseFolder = `${context.userId}/${Date.now()}-${crypto.randomUUID()}`;
+    const signedFiles = [] as Array<{ rel: string; path: string; token: string; signedUrl: string; contentType: string }>;
+    for (const file of files) {
+      const path = `${baseFolder}/${file.rel}`;
+      const { data: signed, error } = await supabaseAdmin.storage
+        .from("game-files")
+        .createSignedUploadUrl(path, { upsert: true });
+      if (error || !signed?.token) {
+        throw new Error(`تعذّر تجهيز رفع الملف "${file.rel}": ${error?.message ?? "خطأ غير معروف"}`);
+      }
+      signedFiles.push({ rel: file.rel, path, token: signed.token, signedUrl: signed.signedUrl, contentType: file.contentType });
+    }
+
+    return {
+      baseFolder,
+      indexPath: `${baseFolder}/${indexRel}`,
+      files: signedFiles,
+      totalBytes: total,
+    };
+  });
+
 export const validateZipGame = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => inputSchema.parse(data))
   .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { indexUrl, folderPath } = data;
     const supaUrl = process.env.SUPABASE_URL!;
     const publicPrefix = `${supaUrl}/storage/v1/object/public/game-files/`;
@@ -52,24 +113,19 @@ export const validateZipGame = createServerFn({ method: "POST" })
     }
 
     // 4) list the whole folder recursively via Storage API and enforce limits
-    const listUrl = `${supaUrl}/storage/v1/object/list/game-files`;
     const walk = async (prefix: string, acc: Array<{ name: string; size: number }>) => {
       let offset = 0;
       // paginate defensively
       while (true) {
-        const res = await fetch(listUrl, {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            apikey: process.env.SUPABASE_PUBLISHABLE_KEY!,
-            authorization: `Bearer ${process.env.SUPABASE_PUBLISHABLE_KEY!}`,
-          },
-          body: JSON.stringify({ prefix, limit: 100, offset, sortBy: { column: "name", order: "asc" } }),
+        const { data: items, error } = await supabaseAdmin.storage.from("game-files").list(prefix, {
+          limit: 100,
+          offset,
+          sortBy: { column: "name", order: "asc" },
         });
-        if (!res.ok) throw new Error(`تعذّر التحقق من ملفات الأرشيف (${res.status})`);
-        const items = (await res.json()) as Array<{ name: string; id: string | null; metadata: { size?: number } | null }>;
-        if (!items.length) break;
-        for (const it of items) {
+        if (error) throw new Error(`تعذّر التحقق من ملفات الأرشيف (${error.message})`);
+        const pageItems = items ?? [];
+        if (!pageItems.length) break;
+        for (const it of pageItems) {
           const full = `${prefix}/${it.name}`;
           if (it.id === null) {
             // subfolder
@@ -83,7 +139,7 @@ export const validateZipGame = createServerFn({ method: "POST" })
             }
           }
         }
-        if (items.length < 100) break;
+        if (pageItems.length < 100) break;
         offset += 100;
       }
     };

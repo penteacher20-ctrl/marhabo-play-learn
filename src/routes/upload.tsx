@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { validateZipGame } from "@/lib/zipUpload.functions";
+import { createZipUploadPlan, validateZipGame } from "@/lib/zipUpload.functions";
 
 export const Route = createFileRoute("/upload")({ component: UploadPage });
 
@@ -94,6 +94,7 @@ function UploadPage() {
       mode === "zip"
         ? [
             { key: "unzip", label: "فك ضغط الأرشيف", status: "pending" },
+            { key: "prepare", label: "تجهيز رفع آمن", status: "pending" },
             { key: "upload", label: "رفع ملفات اللعبة", status: "pending" },
             { key: "validate", label: "تحقق من صحة المحتوى", status: "pending" },
             { key: "save", label: "حفظ اللعبة", status: "pending" },
@@ -110,7 +111,6 @@ function UploadPage() {
       try { await supabase.auth.refreshSession(); } catch { /* ignore */ }
       const { data: sess } = await supabase.auth.getSession();
       if (!sess.session) throw new Error("انتهت جلستك، سجّل دخول من جديد");
-      const uid = sess.session.user.id;
 
       const ts = Date.now();
       let publicUrl = "";
@@ -136,12 +136,12 @@ function UploadPage() {
         setStage("unzip", { status: "done", detail: `${entries.length} ملف — نقطة الدخول: ${indexEntry.name}` });
         setOverallPct(10);
 
-        // 2) upload each file — path shape: {uid}/{ts}/{rel}
-        // Storage RLS matches on the FIRST folder segment (uid). Keep uid as the
-        // first segment; use ts as the game folder so paths look like uid/ts/file.
-        setStage("upload", { status: "active", detail: `0 / ${entries.length}`, pct: 0 });
-        const baseFolder = `${uid}/${ts}`;
-        let done = 0; let total = 0;
+        // 2) read files locally and ask the server for signed upload URLs.
+        // This avoids the browser-side storage INSERT policy that is currently
+        // rejecting files such as offline.js, while keeping user ownership checks.
+        setStage("prepare", { status: "active", detail: "فحص الملفات وتجهيز الروابط..." });
+        const preparedFiles: Array<{ rel: string; blob: Blob; contentType: string; size: number }> = [];
+        let total = 0;
         for (const entry of entries) {
           let rel = entry.name;
           if (stripPrefix && rel.startsWith(stripPrefix)) rel = rel.slice(stripPrefix.length);
@@ -153,38 +153,49 @@ function UploadPage() {
           if (blob.size > MAX_ONE) throw new Error(`الملف ${rel} أكبر من ${MAX_ONE / 1024 / 1024}MB`);
           total += blob.size;
           if (total > MAX_TOTAL) throw new Error(`الحجم الإجمالي يتجاوز ${MAX_TOTAL / 1024 / 1024}MB`);
-          let upErr: any = null;
-          for (let attempt = 0; attempt < 2; attempt++) {
-            const { error } = await supabase.storage
-              .from("game-files")
-              .upload(`${baseFolder}/${rel}`, blob, { contentType, upsert: true });
-            if (!error) { upErr = null; break; }
-            upErr = error;
-            // If RLS/auth failure, refresh session and retry once
-            if (/row-level security|jwt|unauthorized|expired/i.test(error.message)) {
-              try { await supabase.auth.refreshSession(); } catch { /* ignore */ }
-              continue;
-            }
-            break;
-          }
-          if (upErr) throw new Error(`فشل رفع "${rel}": ${upErr.message}`);
-          done++;
-          const pct = Math.round((done / entries.length) * 100);
-          setStage("upload", { detail: `${done} / ${entries.length}`, pct });
-          setOverallPct(10 + Math.round((done / entries.length) * 70));
+          preparedFiles.push({ rel, blob, contentType, size: blob.size });
         }
+
         let indexRel = indexEntry.name;
         if (stripPrefix && indexRel.startsWith(stripPrefix)) indexRel = indexRel.slice(stripPrefix.length);
         indexRel = safe(indexRel);
-        publicUrl = supabase.storage.from("game-files").getPublicUrl(`${baseFolder}/${indexRel}`).data.publicUrl;
+        const plan = await createZipUploadPlan({
+          data: {
+            title,
+            indexRel,
+            files: preparedFiles.map(({ rel, size, contentType }) => ({ rel, size, contentType })),
+          },
+        });
+        setStage("prepare", { status: "done", detail: `${preparedFiles.length} رابط رفع آمن` });
+        setOverallPct(18);
+
+        // 3) upload each file using its signed upload token.
+        setStage("upload", { status: "active", detail: `0 / ${preparedFiles.length}`, pct: 0 });
+        let done = 0;
+        for (const signedFile of plan.files) {
+          const prepared = preparedFiles.find((item) => item.rel === signedFile.rel);
+          if (!prepared) throw new Error(`ملف مفقود قبل الرفع: ${signedFile.rel}`);
+          const { error: upErr } = await supabase.storage
+            .from("game-files")
+            .uploadToSignedUrl(signedFile.path, signedFile.token, prepared.blob, {
+              contentType: signedFile.contentType,
+              upsert: true,
+            });
+          if (upErr) throw new Error(`فشل رفع "${signedFile.rel}": ${upErr.message}`);
+          done++;
+          const pct = Math.round((done / preparedFiles.length) * 100);
+          setStage("upload", { detail: `${done} / ${preparedFiles.length}`, pct });
+          setOverallPct(18 + Math.round((done / preparedFiles.length) * 62));
+        }
+        publicUrl = supabase.storage.from("game-files").getPublicUrl(plan.indexPath).data.publicUrl;
         gameType = "html-zip";
         setStage("upload", { status: "done", detail: `${done} ملف — ${(total / 1024 / 1024).toFixed(2)}MB` });
         setOverallPct(82);
 
-        // 3) server-side validation
+        // 4) server-side validation
         setStage("validate", { status: "active", detail: "تحقق من index.html والحدود..." });
         try {
-          const res = await validateZipGame({ data: { title, indexUrl: publicUrl, folderPath: baseFolder } });
+          const res = await validateZipGame({ data: { title, indexUrl: publicUrl, folderPath: plan.baseFolder } });
           setStage("validate", { status: "done", detail: `تم التحقق (${res.count} ملف)` });
         } catch (e: any) {
           throw new Error(`فشل التحقق: ${e?.message ?? "خطأ غير معروف"}`);
