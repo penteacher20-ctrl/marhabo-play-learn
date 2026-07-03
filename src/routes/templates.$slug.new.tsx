@@ -269,8 +269,32 @@ function NewFromTemplate() {
             </div>
           </div>
 
-          <button disabled={busy} onClick={submit} className="bubble-btn text-white w-full disabled:opacity-60" style={{ background: "var(--gradient-primary)" }}>
-            {busy ? "..." : "🚀 إنشاء اللعبة"}
+          {stages.length > 0 && (
+            <div className="rounded-2xl bg-secondary/40 border-2 border-primary/10 p-4 space-y-3">
+              {stages.map((s) => (
+                <div key={s.id} className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2 text-sm">
+                    <div className="flex items-center gap-2 font-bold">
+                      {s.status === "uploading" && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
+                      {s.status === "done" && <CheckCircle2 className="w-4 h-4 text-green-600" />}
+                      {s.status === "error" && <XCircle className="w-4 h-4 text-destructive" />}
+                      {s.status === "pending" && <span className="w-4 h-4 rounded-full border-2 border-muted-foreground/40" />}
+                      <span>{s.label}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {s.status === "error" ? "فشل" : s.status === "done" ? "تم" : `${s.progress}%`}
+                    </span>
+                  </div>
+                  <Progress value={s.status === "error" ? 100 : s.progress} className={s.status === "error" ? "[&>div]:bg-destructive" : s.status === "done" ? "[&>div]:bg-green-600" : ""} />
+                  {s.error && <p className="text-xs text-destructive">{s.error}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button disabled={busy} onClick={submit} className="bubble-btn text-white w-full disabled:opacity-60 flex items-center justify-center gap-2" style={{ background: "var(--gradient-primary)" }}>
+            {busy && <Loader2 className="w-5 h-5 animate-spin" />}
+            {busy ? "جاري الإنشاء..." : "🚀 إنشاء اللعبة"}
           </button>
         </div>
       </div>
