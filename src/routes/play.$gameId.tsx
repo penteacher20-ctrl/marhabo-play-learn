@@ -44,6 +44,10 @@ function PlayPage() {
         await supabase.from("games").update({ play_count: (data as Game).play_count + 1 }).eq("id", gameId);
         const { data: p } = await supabase.from("profiles").select("name").eq("id", (data as Game).user_id).maybeSingle();
         if (p) setCreator((p as any).name ?? "");
+        if ((data as Game).type === "embed") {
+          // External embed (Wordwall, YouTube, etc.) — render iframe src directly, skip fetch.
+          return;
+        }
         if ((data as Game).file_url) {
           try {
             setLoadError("");
@@ -261,6 +265,17 @@ function PlayPage() {
               </button>
             </div>
           </div>
+        ) : game.type === "embed" && game.file_url ? (
+          <iframe
+            ref={iframeRef}
+            src={game.file_url}
+            title={game.title}
+            className="block border-0"
+            style={{ ...iframeStyle, minHeight: isFullscreen ? "100vh" : "calc(100vh - 110px)" }}
+            allowFullScreen
+            allow="autoplay; fullscreen; encrypted-media; gyroscope; picture-in-picture"
+            onError={() => setLoadError("فشل تحميل اللعبة المضمّنة")}
+          />
         ) : html ? (
           <iframe
             ref={iframeRef}
