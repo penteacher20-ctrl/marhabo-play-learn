@@ -105,6 +105,13 @@ function UploadPage() {
     setStages(initial);
 
     try {
+      // Ensure fresh session — avoids storage-api RLS failures when the JWT is
+      // near expiry or was issued with a rotated signing key.
+      try { await supabase.auth.refreshSession(); } catch { /* ignore */ }
+      const { data: sess } = await supabase.auth.getSession();
+      if (!sess.session) throw new Error("انتهت جلستك، سجّل دخول من جديد");
+      const uid = sess.session.user.id;
+
       const ts = Date.now();
       let publicUrl = "";
       let gameType: "html" | "html-zip" = "html";
@@ -129,9 +136,11 @@ function UploadPage() {
         setStage("unzip", { status: "done", detail: `${entries.length} ملف — نقطة الدخول: ${indexEntry.name}` });
         setOverallPct(10);
 
-        // 2) upload each file
+        // 2) upload each file — path shape: {uid}/{ts}/{rel}
+        // Storage RLS matches on the FIRST folder segment (uid). Keep uid as the
+        // first segment; use ts as the game folder so paths look like uid/ts/file.
         setStage("upload", { status: "active", detail: `0 / ${entries.length}`, pct: 0 });
-        const baseFolder = `${user.id}/${ts}-${safe(file.name.replace(/\.zip$/i, ""))}`;
+        const baseFolder = `${uid}/${ts}`;
         let done = 0; let total = 0;
         for (const entry of entries) {
           let rel = entry.name;
@@ -144,10 +153,21 @@ function UploadPage() {
           if (blob.size > MAX_ONE) throw new Error(`الملف ${rel} أكبر من ${MAX_ONE / 1024 / 1024}MB`);
           total += blob.size;
           if (total > MAX_TOTAL) throw new Error(`الحجم الإجمالي يتجاوز ${MAX_TOTAL / 1024 / 1024}MB`);
-          const { error } = await supabase.storage
-            .from("game-files")
-            .upload(`${baseFolder}/${rel}`, blob, { contentType, upsert: true });
-          if (error) throw new Error(`فشل رفع "${rel}": ${error.message}`);
+          let upErr: any = null;
+          for (let attempt = 0; attempt < 2; attempt++) {
+            const { error } = await supabase.storage
+              .from("game-files")
+              .upload(`${baseFolder}/${rel}`, blob, { contentType, upsert: true });
+            if (!error) { upErr = null; break; }
+            upErr = error;
+            // If RLS/auth failure, refresh session and retry once
+            if (/row-level security|jwt|unauthorized|expired/i.test(error.message)) {
+              try { await supabase.auth.refreshSession(); } catch { /* ignore */ }
+              continue;
+            }
+            break;
+          }
+          if (upErr) throw new Error(`فشل رفع "${rel}": ${upErr.message}`);
           done++;
           const pct = Math.round((done / entries.length) * 100);
           setStage("upload", { detail: `${done} / ${entries.length}`, pct });
