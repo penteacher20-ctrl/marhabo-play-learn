@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Navbar } from "@/components/Navbar";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
-import { generateColoring, generatePuzzle } from "@/lib/templates";
+import { generateColoring, generatePuzzle, generateMatching, generateWheel, generateQuiz, generateBlanks } from "@/lib/templates";
 
 export const Route = createFileRoute("/play/$gameId")({ component: PlayPage });
 
@@ -20,6 +20,23 @@ function extractPuzzleGrid(html: string): number {
   const m = html.match(/(?:let|const|var)\s+ROWS\s*=\s*(\d+)/);
   return m ? parseInt(m[1], 10) : 4;
 }
+// Parse `const NAME = <JSON>;` baked into template HTML. Templates always
+// serialize their config via JSON.stringify so JSON.parse is safe here.
+function extractJsonConst<T = unknown>(html: string, name: string): T | null {
+  const re = new RegExp(`(?:const|let|var)\\s+${name}\\s*=\\s*(\\[[\\s\\S]*?\\]|\\{[\\s\\S]*?\\})\\s*;`);
+  const m = html.match(re);
+  if (!m) return null;
+  try { return JSON.parse(m[1]) as T; } catch { return null; }
+}
+function extractMatchingBack(html: string): string | null {
+  const m = html.match(/\.mm-back\s*\{\s*background-image:\s*url\(['"]([^'"]+)['"]\)/);
+  return m ? m[1] : null;
+}
+function extractTitle(html: string, fallback: string): string {
+  const m = html.match(/<h1[^>]*>([^<]+)<\/h1>/);
+  return m ? m[1].trim() : fallback;
+}
+
 
 function PlayPage() {
   const { gameId } = Route.useParams();
