@@ -304,7 +304,7 @@ function PlayPage() {
             />
           );
           return wrapperStyle && !isFullscreen ? <div style={wrapperStyle}>{frame}</div> : frame;
-        })()
+        })() : html ? (
           <iframe
             ref={iframeRef}
             srcDoc={html}
