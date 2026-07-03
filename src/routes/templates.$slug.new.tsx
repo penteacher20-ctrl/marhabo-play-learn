@@ -18,7 +18,7 @@ type Stage = { id: string; label: string; status: StageStatus; progress: number;
 
 export const Route = createFileRoute("/templates/$slug/new")({ component: NewFromTemplate });
 
-const SUPPORTED = ["quiz", "blanks", "matching", "wheel", "puzzle", "draw"];
+const SUPPORTED = ["quiz", "blanks", "matching", "wheel", "puzzle", "draw", "tower"];
 
 function NewFromTemplate() {
   const { slug } = Route.useParams();
