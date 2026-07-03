@@ -2,11 +2,14 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import JSZip from "jszip";
+import { CheckCircle2, Loader2, XCircle, Circle } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { Progress } from "@/components/ui/progress";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
+import { validateZipGame } from "@/lib/zipUpload.functions";
 
 export const Route = createFileRoute("/upload")({ component: UploadPage });
 
@@ -20,17 +23,27 @@ const MIME: Record<string, string> = {
   ttf: "font/ttf", otf: "font/otf", txt: "text/plain",
 };
 
+const MAX_FILES = 200;
+const MAX_TOTAL = 50 * 1024 * 1024;
+const MAX_ONE = 8 * 1024 * 1024;
+
+type Mode = "html" | "zip";
+type StageStatus = "pending" | "active" | "done" | "error";
+interface Stage { key: string; label: string; status: StageStatus; detail?: string; pct?: number }
+
 function UploadPage() {
   const { tr } = useI18n();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const [mode, setMode] = useState<Mode>("html");
   const [file, setFile] = useState<File | null>(null);
   const [thumb, setThumb] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
   const [isPublic, setIsPublic] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [progress, setProgress] = useState<string>("");
+  const [stages, setStages] = useState<Stage[]>([]);
+  const [overallPct, setOverallPct] = useState(0);
   const [drag, setDrag] = useState(false);
 
   if (loading) return <Wrapper><div className="card-pop p-10 text-center max-w-md mx-auto">جاري التحميل...</div></Wrapper>;
@@ -48,49 +61,78 @@ function UploadPage() {
     );
   }
 
+  const acceptExt = mode === "zip" ? ".zip" : ".html,.htm";
+  const validateExt = (f: File) => {
+    const n = f.name.toLowerCase();
+    if (mode === "zip") return n.endsWith(".zip");
+    return n.endsWith(".html") || n.endsWith(".htm");
+  };
+
   const accept = (f: File | null) => {
     if (!f) return;
-    const n = f.name.toLowerCase();
-    if (n.endsWith(".html") || n.endsWith(".htm") || n.endsWith(".zip")) setFile(f);
-    else toast.error("ارفع ملف HTML أو ZIP فقط");
+    if (!validateExt(f)) {
+      toast.error(mode === "zip" ? "الرجاء اختيار ملف .zip" : "الرجاء اختيار ملف .html");
+      return;
+    }
+    setFile(f);
   };
 
-  const onDrop = (e: React.DragEvent) => {
-    e.preventDefault(); setDrag(false);
-    accept(e.dataTransfer.files[0]);
-  };
+  const onDrop = (e: React.DragEvent) => { e.preventDefault(); setDrag(false); accept(e.dataTransfer.files[0]); };
 
   const safe = (n: string) => n.replace(/[^a-zA-Z0-9._/-]/g, "_");
+  const BAD_PATH = /(^|\/)\.\.($|\/)|\\|^\/|:/;
 
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
+  const setStage = (key: string, patch: Partial<Stage>) =>
+    setStages((prev) => prev.map((s) => (s.key === key ? { ...s, ...patch } : s)));
+
+  const runUpload = async (e?: FormEvent) => {
+    e?.preventDefault();
     if (!file || !title) { toast.error("املأ كل الحقول"); return; }
-    setBusy(true);
+    setBusy(true); setOverallPct(0);
+
+    const initial: Stage[] =
+      mode === "zip"
+        ? [
+            { key: "unzip", label: "فك ضغط الأرشيف", status: "pending" },
+            { key: "upload", label: "رفع ملفات اللعبة", status: "pending" },
+            { key: "validate", label: "تحقق من صحة المحتوى", status: "pending" },
+            { key: "save", label: "حفظ اللعبة", status: "pending" },
+          ]
+        : [
+            { key: "upload", label: "رفع ملف HTML", status: "pending" },
+            { key: "save", label: "حفظ اللعبة", status: "pending" },
+          ];
+    setStages(initial);
+
     try {
       const ts = Date.now();
-      const isZip = file.name.toLowerCase().endsWith(".zip");
       let publicUrl = "";
       let gameType: "html" | "html-zip" = "html";
 
-      if (isZip) {
-        setProgress("جاري فك ضغط الملف...");
+      if (mode === "zip") {
+        // 1) unzip
+        setStage("unzip", { status: "active", detail: "جاري القراءة..." });
         const zip = await JSZip.loadAsync(file);
         const entries = Object.values(zip.files).filter((f) => !f.dir);
         if (!entries.length) throw new Error("الملف المضغوط فارغ");
-
-        // Find index.html: prefer root, else shallowest
+        if (entries.length > MAX_FILES) throw new Error(`عدد الملفات (${entries.length}) يتجاوز ${MAX_FILES}`);
+        for (const en of entries) {
+          if (BAD_PATH.test(en.name)) throw new Error(`مسار غير آمن داخل الأرشيف: ${en.name}`);
+        }
         const htmls = entries.filter((f) => /\.html?$/i.test(f.name));
-        if (!htmls.length) throw new Error("لم يتم العثور على ملف HTML داخل الملف المضغوط");
+        if (!htmls.length) throw new Error("لم يتم العثور على ملف HTML داخل الأرشيف");
         htmls.sort((a, b) => a.name.split("/").length - b.name.split("/").length);
         const indexEntry =
           htmls.find((f) => /^(?:[^/]+\/)?index\.html?$/i.test(f.name)) ?? htmls[0];
-
-        // Strip common root folder (foo/index.html → index.html)
         const parts = indexEntry.name.split("/");
         const stripPrefix = parts.length > 1 ? parts.slice(0, -1).join("/") + "/" : "";
-        const baseFolder = `${user.id}/${ts}-${safe(file.name.replace(/\.zip$/i, ""))}`;
+        setStage("unzip", { status: "done", detail: `${entries.length} ملف — نقطة الدخول: ${indexEntry.name}` });
+        setOverallPct(10);
 
-        let done = 0;
+        // 2) upload each file
+        setStage("upload", { status: "active", detail: `0 / ${entries.length}`, pct: 0 });
+        const baseFolder = `${user.id}/${ts}-${safe(file.name.replace(/\.zip$/i, ""))}`;
+        let done = 0; let total = 0;
         for (const entry of entries) {
           let rel = entry.name;
           if (stripPrefix && rel.startsWith(stripPrefix)) rel = rel.slice(stripPrefix.length);
@@ -99,48 +141,77 @@ function UploadPage() {
           const ext = rel.split(".").pop()?.toLowerCase() ?? "";
           const contentType = MIME[ext] ?? "application/octet-stream";
           const blob = await entry.async("blob");
-          const path = `${baseFolder}/${rel}`;
+          if (blob.size > MAX_ONE) throw new Error(`الملف ${rel} أكبر من ${MAX_ONE / 1024 / 1024}MB`);
+          total += blob.size;
+          if (total > MAX_TOTAL) throw new Error(`الحجم الإجمالي يتجاوز ${MAX_TOTAL / 1024 / 1024}MB`);
           const { error } = await supabase.storage
             .from("game-files")
-            .upload(path, blob, { contentType, upsert: true });
-          if (error) throw new Error(`فشل رفع ${rel}: ${error.message}`);
+            .upload(`${baseFolder}/${rel}`, blob, { contentType, upsert: true });
+          if (error) throw new Error(`فشل رفع "${rel}": ${error.message}`);
           done++;
-          setProgress(`رفع الملفات ${done}/${entries.length}`);
+          const pct = Math.round((done / entries.length) * 100);
+          setStage("upload", { detail: `${done} / ${entries.length}`, pct });
+          setOverallPct(10 + Math.round((done / entries.length) * 70));
         }
-
         let indexRel = indexEntry.name;
         if (stripPrefix && indexRel.startsWith(stripPrefix)) indexRel = indexRel.slice(stripPrefix.length);
         indexRel = safe(indexRel);
         publicUrl = supabase.storage.from("game-files").getPublicUrl(`${baseFolder}/${indexRel}`).data.publicUrl;
         gameType = "html-zip";
+        setStage("upload", { status: "done", detail: `${done} ملف — ${(total / 1024 / 1024).toFixed(2)}MB` });
+        setOverallPct(82);
+
+        // 3) server-side validation
+        setStage("validate", { status: "active", detail: "تحقق من index.html والحدود..." });
+        try {
+          const res = await validateZipGame({ data: { title, indexUrl: publicUrl, folderPath: baseFolder } });
+          setStage("validate", { status: "done", detail: `تم التحقق (${res.count} ملف)` });
+        } catch (e: any) {
+          throw new Error(`فشل التحقق: ${e?.message ?? "خطأ غير معروف"}`);
+        }
+        setOverallPct(92);
       } else {
-        setProgress("جاري رفع الملف...");
+        setStage("upload", { status: "active", detail: file.name, pct: 0 });
         const filePath = `${user.id}/${ts}-${safe(file.name)}`;
         const { error: upErr } = await supabase.storage.from("game-files").upload(filePath, file, { contentType: "text/html" });
-        if (upErr) throw upErr;
+        if (upErr) throw new Error(`فشل الرفع: ${upErr.message}`);
         publicUrl = supabase.storage.from("game-files").getPublicUrl(filePath).data.publicUrl;
+        setStage("upload", { status: "done", detail: file.name, pct: 100 });
+        setOverallPct(80);
       }
 
+      // Thumbnail (optional)
       let thumbUrl: string | null = null;
       if (thumb) {
-        setProgress("رفع الصورة المصغرة...");
         const tp = `${user.id}/${ts}-${safe(thumb.name)}`;
         const { error: tErr } = await supabase.storage.from("thumbnails").upload(tp, thumb);
         if (!tErr) thumbUrl = supabase.storage.from("thumbnails").getPublicUrl(tp).data.publicUrl;
       }
 
-      setProgress("حفظ اللعبة...");
+      // Save
+      setStage("save", { status: "active", detail: "حفظ في قاعدة البيانات..." });
       const { data: game, error: gErr } = await supabase.from("games").insert({
         user_id: user.id, title, description: desc, type: gameType, file_url: publicUrl, thumbnail_url: thumbUrl, is_public: isPublic,
       }).select().single();
-      if (gErr) throw gErr;
+      if (gErr) throw new Error(`فشل الحفظ: ${gErr.message}`);
+      setStage("save", { status: "done" });
+      setOverallPct(100);
 
       toast.success("تم رفع اللعبة بنجاح! 🎉");
+      // Instant preview inside player
       navigate({ to: "/play/$gameId", params: { gameId: game.id } });
     } catch (err: any) {
-      toast.error(err.message ?? "خطأ أثناء الرفع");
-    } finally { setBusy(false); setProgress(""); }
+      const msg = err?.message ?? "خطأ أثناء الرفع";
+      setStages((prev) => {
+        const active = prev.find((s) => s.status === "active");
+        if (active) return prev.map((s) => (s.key === active.key ? { ...s, status: "error", detail: msg } : s));
+        return [...prev, { key: "err", label: "خطأ", status: "error", detail: msg }];
+      });
+      toast.error(msg);
+    } finally { setBusy(false); }
   };
+
+  const canRetry = !busy && stages.some((s) => s.status === "error");
 
   return (
     <Wrapper>
@@ -148,49 +219,139 @@ function UploadPage() {
         <h1 className="text-4xl md:text-5xl font-display font-black text-center mb-2">{tr("upload_title")}</h1>
         <p className="text-center text-muted-foreground mb-8">{tr("upload_sub")}</p>
 
-        <form onSubmit={submit} className="card-pop p-8 space-y-5">
-          <label
-            onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
-            onDragLeave={() => setDrag(false)}
-            onDrop={onDrop}
-            className={`block border-3 border-dashed rounded-3xl p-10 text-center cursor-pointer transition ${drag ? "border-primary bg-primary/5" : "border-border bg-secondary/40"}`}
-            style={{ borderWidth: 3 }}
-          >
-            <input type="file" accept=".html,.htm,.zip" hidden onChange={(e) => accept(e.target.files?.[0] ?? null)} />
-            <div className="text-5xl mb-2">📂</div>
-            <div className="font-bold">{file ? file.name : "اسحب ملف HTML أو ZIP هنا"}</div>
-            <div className="text-xs text-muted-foreground mt-1">.html أو .zip (لعبة كاملة بملفاتها)</div>
-          </label>
-
-          <Field label={tr("game_title")}>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} className="input" required />
-          </Field>
-          <Field label={tr("game_desc")}>
-            <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} className="input" />
-          </Field>
-          <Field label={tr("thumbnail")}>
-            <input type="file" accept="image/*" onChange={(e) => setThumb(e.target.files?.[0] ?? null)} className="text-sm" />
-          </Field>
-
-          <div className="flex items-center justify-between bg-secondary/50 rounded-2xl px-4 py-3">
-            <span className="font-bold">{tr("privacy")}</span>
-            <div className="flex gap-1 p-1 bg-background rounded-full">
-              <button type="button" onClick={() => setIsPublic(true)} className={`px-4 py-1.5 rounded-full text-sm font-bold ${isPublic ? "text-white" : "text-foreground"}`} style={isPublic ? { background: "var(--green-fun)" } : {}}>{tr("public")}</button>
-              <button type="button" onClick={() => setIsPublic(false)} className={`px-4 py-1.5 rounded-full text-sm font-bold ${!isPublic ? "text-white bg-foreground" : "text-foreground"}`}>{tr("private")}</button>
+        <form onSubmit={runUpload} className="card-pop p-8 space-y-5">
+          <fieldset disabled={busy} className="space-y-5 disabled:opacity-70">
+            {/* Mode selector */}
+            <div className="grid grid-cols-2 gap-3">
+              <ModeCard
+                active={mode === "html"}
+                onClick={() => { setMode("html"); setFile(null); setStages([]); }}
+                icon="📄"
+                title="ملف HTML واحد"
+                desc="لعبة داخل ملف .html مستقل بدون أصول خارجية."
+              />
+              <ModeCard
+                active={mode === "zip"}
+                onClick={() => { setMode("zip"); setFile(null); setStages([]); }}
+                icon="🗜️"
+                title="أرشيف ZIP كامل"
+                desc="لعبة متعددة الملفات (html + css + js + صور) داخل .zip، مع index.html."
+              />
             </div>
-          </div>
 
-          {busy && progress && (
-            <div className="text-sm text-center bg-secondary/60 rounded-xl px-3 py-2 font-medium">{progress}</div>
+            <label
+              onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+              onDragLeave={() => setDrag(false)}
+              onDrop={onDrop}
+              className={`block border-3 border-dashed rounded-3xl p-8 text-center cursor-pointer transition ${drag ? "border-primary bg-primary/5" : "border-border bg-secondary/40"}`}
+              style={{ borderWidth: 3 }}
+            >
+              <input type="file" accept={acceptExt} hidden onChange={(e) => accept(e.target.files?.[0] ?? null)} />
+              <div className="text-4xl mb-2">{mode === "zip" ? "🗜️" : "📂"}</div>
+              <div className="font-bold">{file ? file.name : (mode === "zip" ? "اسحب ملف .zip هنا" : "اسحب ملف .html هنا")}</div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {mode === "zip"
+                  ? `يجب أن يحتوي على index.html — حد أقصى ${MAX_FILES} ملف و${MAX_TOTAL / 1024 / 1024}MB`
+                  : "ملف واحد بامتداد .html"}
+              </div>
+              {file && (
+                <div className="mt-2 inline-flex items-center gap-2 text-xs bg-background rounded-full px-3 py-1 border border-border">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
+                  {mode === "zip" ? "أرشيف ZIP" : "ملف HTML"} — {(file.size / 1024).toFixed(1)}KB
+                </div>
+              )}
+            </label>
+
+            <Field label={tr("game_title")}>
+              <input value={title} onChange={(e) => setTitle(e.target.value)} className="input" required maxLength={200} />
+            </Field>
+            <Field label={tr("game_desc")}>
+              <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} className="input" maxLength={1000} />
+            </Field>
+            <Field label={tr("thumbnail")}>
+              <input type="file" accept="image/*" onChange={(e) => setThumb(e.target.files?.[0] ?? null)} className="text-sm" />
+            </Field>
+
+            <div className="flex items-center justify-between bg-secondary/50 rounded-2xl px-4 py-3">
+              <span className="font-bold">{tr("privacy")}</span>
+              <div className="flex gap-1 p-1 bg-background rounded-full">
+                <button type="button" onClick={() => setIsPublic(true)} className={`px-4 py-1.5 rounded-full text-sm font-bold ${isPublic ? "text-white" : "text-foreground"}`} style={isPublic ? { background: "var(--green-fun)" } : {}}>{tr("public")}</button>
+                <button type="button" onClick={() => setIsPublic(false)} className={`px-4 py-1.5 rounded-full text-sm font-bold ${!isPublic ? "text-white bg-foreground" : "text-foreground"}`}>{tr("private")}</button>
+              </div>
+            </div>
+          </fieldset>
+
+          {stages.length > 0 && (
+            <div className="rounded-2xl border-2 border-border bg-background/60 p-4 space-y-3">
+              <div>
+                <div className="flex items-center justify-between text-xs font-bold mb-1">
+                  <span>التقدّم الكلي</span><span>{overallPct}%</span>
+                </div>
+                <Progress value={overallPct} className="h-2" />
+              </div>
+              <ul className="space-y-2">
+                {stages.map((s) => (
+                  <li key={s.key} className="flex items-start gap-2 text-sm">
+                    <StatusIcon status={s.status} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className={`font-bold ${s.status === "error" ? "text-destructive" : ""}`}>{s.label}</span>
+                        {typeof s.pct === "number" && s.status === "active" && (
+                          <span className="text-xs text-muted-foreground">{s.pct}%</span>
+                        )}
+                      </div>
+                      {s.detail && (
+                        <div className={`text-xs mt-0.5 ${s.status === "error" ? "text-destructive" : "text-muted-foreground"} break-words`}>
+                          {s.detail}
+                        </div>
+                      )}
+                      {typeof s.pct === "number" && s.status === "active" && (
+                        <Progress value={s.pct} className="h-1.5 mt-1.5" />
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              {canRetry && (
+                <button
+                  type="button"
+                  onClick={() => runUpload()}
+                  className="bubble-btn text-white w-full text-sm"
+                  style={{ background: "var(--gradient-primary)" }}
+                >
+                  🔄 إعادة المحاولة
+                </button>
+              )}
+            </div>
           )}
 
           <button disabled={busy} className="bubble-btn text-white w-full disabled:opacity-60" style={{ background: "var(--gradient-primary)" }}>
-            {busy ? "..." : `🚀 ${tr("upload_now")}`}
+            {busy ? "جاري الرفع..." : `🚀 ${tr("upload_now")}`}
           </button>
         </form>
       </div>
       <style>{`.input{width:100%;padding:.75rem 1rem;border-radius:1rem;background:hsl(0 0% 100%);border:2px solid var(--color-border);font:inherit;outline:none;transition:border-color .2s}.input:focus{border-color:var(--color-primary)}`}</style>
     </Wrapper>
+  );
+}
+
+function StatusIcon({ status }: { status: StageStatus }) {
+  if (status === "done") return <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />;
+  if (status === "error") return <XCircle className="w-5 h-5 text-destructive shrink-0" />;
+  if (status === "active") return <Loader2 className="w-5 h-5 text-primary animate-spin shrink-0" />;
+  return <Circle className="w-5 h-5 text-muted-foreground shrink-0" />;
+}
+
+function ModeCard({ active, onClick, icon, title, desc }: { active: boolean; onClick: () => void; icon: string; title: string; desc: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`text-right p-4 rounded-2xl border-2 transition ${active ? "border-primary bg-primary/5 shadow" : "border-border bg-secondary/30 hover:border-primary/50"}`}
+    >
+      <div className="flex items-center gap-2 mb-1"><span className="text-xl">{icon}</span><span className="font-extrabold">{title}</span></div>
+      <div className="text-xs text-muted-foreground leading-relaxed">{desc}</div>
+    </button>
   );
 }
 
