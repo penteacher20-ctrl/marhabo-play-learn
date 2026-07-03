@@ -246,7 +246,22 @@ function PlayPage() {
             ✕ خروج
           </button>
         )}
-        {html ? (
+        {loadError ? (
+          <div className="grid place-items-center h-full min-h-[60vh] p-6">
+            <div className="max-w-md w-full bg-background rounded-2xl border-2 border-destructive/30 p-6 text-center space-y-3">
+              <div className="text-4xl">⚠️</div>
+              <div className="font-extrabold text-lg">تعذّر تحميل اللعبة</div>
+              <div className="text-sm text-muted-foreground break-words">{loadError}</div>
+              <button
+                onClick={() => { setLoadError(""); setHtml(""); setReloadKey((k) => k + 1); }}
+                className="bubble-btn text-white text-sm w-full"
+                style={{ background: "var(--gradient-primary)" }}
+              >
+                🔄 إعادة المحاولة
+              </button>
+            </div>
+          </div>
+        ) : html ? (
           <iframe
             ref={iframeRef}
             srcDoc={html}
@@ -255,6 +270,7 @@ function PlayPage() {
             style={{ ...iframeStyle, minHeight: isFullscreen ? "100vh" : "calc(100vh - 110px)" }}
             sandbox="allow-scripts allow-same-origin allow-downloads"
             allowFullScreen
+            onError={() => setLoadError("فشل عرض اللعبة داخل الإطار")}
           />
         ) : game.file_url ? (
           <div className="grid place-items-center h-96 text-muted-foreground">جاري تحميل اللعبة...</div>
@@ -263,3 +279,4 @@ function PlayPage() {
     </div>
   );
 }
+
