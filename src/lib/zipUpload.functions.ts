@@ -123,8 +123,9 @@ export const validateZipGame = createServerFn({ method: "POST" })
           sortBy: { column: "name", order: "asc" },
         });
         if (error) throw new Error(`تعذّر التحقق من ملفات الأرشيف (${error.message})`);
-        if (!items.length) break;
-        for (const it of items) {
+        const pageItems = items ?? [];
+        if (!pageItems.length) break;
+        for (const it of pageItems) {
           const full = `${prefix}/${it.name}`;
           if (it.id === null) {
             // subfolder
@@ -138,7 +139,7 @@ export const validateZipGame = createServerFn({ method: "POST" })
             }
           }
         }
-        if (items.length < 100) break;
+        if (pageItems.length < 100) break;
         offset += 100;
       }
     };
