@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Navbar } from "@/components/Navbar";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
-import { generateColoring, generatePuzzle } from "@/lib/templates";
+import { generateColoring, generatePuzzle, generateMatching, generateWheel, generateQuiz, generateBlanks } from "@/lib/templates";
 
 export const Route = createFileRoute("/play/$gameId")({ component: PlayPage });
 
@@ -20,6 +20,23 @@ function extractPuzzleGrid(html: string): number {
   const m = html.match(/(?:let|const|var)\s+ROWS\s*=\s*(\d+)/);
   return m ? parseInt(m[1], 10) : 4;
 }
+// Parse `const NAME = <JSON>;` baked into template HTML. Templates always
+// serialize their config via JSON.stringify so JSON.parse is safe here.
+function extractJsonConst<T = unknown>(html: string, name: string): T | null {
+  const re = new RegExp(`(?:const|let|var)\\s+${name}\\s*=\\s*(\\[[\\s\\S]*?\\]|\\{[\\s\\S]*?\\})\\s*;`);
+  const m = html.match(re);
+  if (!m) return null;
+  try { return JSON.parse(m[1]) as T; } catch { return null; }
+}
+function extractMatchingBack(html: string): string | null {
+  const m = html.match(/\.mm-back\s*\{\s*background-image:\s*url\(['"]([^'"]+)['"]\)/);
+  return m ? m[1] : null;
+}
+function extractTitle(html: string, fallback: string): string {
+  const m = html.match(/<h1[^>]*>([^<]+)<\/h1>/);
+  return m ? m[1].trim() : fallback;
+}
+
 
 function PlayPage() {
   const { gameId } = Route.useParams();
@@ -57,15 +74,43 @@ function PlayPage() {
             let txt = await res.text();
             if (!txt || txt.length < 20) throw new Error("ملف اللعبة فارغ أو تالف");
 
-            const isColoring = (data as Game).type === "template:draw" && /const\s+SRC\s*=/.test(txt);
-            const isPuzzle = (data as Game).type?.startsWith("template:puzzle") && /const\s+SRC\s*=/.test(txt);
-            const isZip = (data as Game).type === "html-zip";
-            const imageUrl = (isColoring || isPuzzle) ? extractSrc(txt) : null;
-            if (isColoring && imageUrl) {
-              txt = generateColoring({ title: (data as Game).title, imageUrl });
-            } else if (isPuzzle && imageUrl) {
-              const grid = extractPuzzleGrid(txt);
-              txt = generatePuzzle({ title: (data as Game).title, imageUrl, rows: grid, cols: grid });
+            // Runtime auto-upgrade: for every template type we can parse the
+            // baked-in config out of the saved HTML and re-generate with the
+            // latest template code. This transparently upgrades old games.
+            const gtype = (data as Game).type || "";
+            const gtitle = (data as Game).title;
+            const isZip = gtype === "html-zip";
+            try {
+              if (gtype === "template:draw") {
+                const imageUrl = extractSrc(txt);
+                if (imageUrl) txt = generateColoring({ title: gtitle, imageUrl });
+              } else if (gtype.startsWith("template:puzzle")) {
+                const imageUrl = extractSrc(txt);
+                if (imageUrl) {
+                  const grid = extractPuzzleGrid(txt);
+                  txt = generatePuzzle({ title: gtitle, imageUrl, rows: grid, cols: grid });
+                }
+              } else if (gtype === "template:matching") {
+                const imgs = extractJsonConst<string[]>(txt, "IMGS");
+                if (imgs && imgs.length) {
+                  const backUrl = extractMatchingBack(txt) || "";
+                  txt = generateMatching({ title: gtitle, images: imgs, backUrl });
+                } else {
+                  const pairs = extractJsonConst<{ a: string; b: string }[]>(txt, "P");
+                  if (pairs) txt = generateMatching({ title: gtitle, pairs });
+                }
+              } else if (gtype === "template:wheel") {
+                const items = extractJsonConst<string[]>(txt, "items");
+                if (items) txt = generateWheel({ title: gtitle, items });
+              } else if (gtype === "template:quiz") {
+                const questions = extractJsonConst<{ q: string; options: string[]; correct: number }[]>(txt, "Q");
+                if (questions) txt = generateQuiz({ title: gtitle, questions });
+              } else if (gtype === "template:blanks") {
+                const sentences = extractJsonConst<{ text: string; answers: string[] }[]>(txt, "S");
+                if (sentences) txt = generateBlanks({ title: gtitle, sentences });
+              }
+            } catch (regenErr) {
+              console.warn("template auto-upgrade failed, using stored HTML", regenErr);
             }
             // For zipped multi-file games, inject <base href> so relative assets resolve under srcDoc
             if (isZip) {
