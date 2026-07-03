@@ -46,9 +46,13 @@ function PlayPage() {
         if (p) setCreator((p as any).name ?? "");
         if ((data as Game).file_url) {
           try {
+            setLoadError("");
             const fileUrl = (data as Game).file_url!;
             const res = await fetch(fileUrl);
+            if (!res.ok) throw new Error(`تعذّر جلب ملف اللعبة (HTTP ${res.status})`);
             let txt = await res.text();
+            if (!txt || txt.length < 20) throw new Error("ملف اللعبة فارغ أو تالف");
+
             const isColoring = (data as Game).type === "template:draw" && /const\s+SRC\s*=/.test(txt);
             const isPuzzle = (data as Game).type?.startsWith("template:puzzle") && /const\s+SRC\s*=/.test(txt);
             const isZip = (data as Game).type === "html-zip";
