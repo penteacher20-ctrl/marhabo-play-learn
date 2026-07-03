@@ -265,18 +265,46 @@ function PlayPage() {
               </button>
             </div>
           </div>
-        ) : game.type === "embed" && game.file_url ? (
-          <iframe
-            ref={iframeRef}
-            src={game.file_url}
-            title={game.title}
-            className="block border-0"
-            style={{ ...iframeStyle, minHeight: isFullscreen ? "100vh" : "calc(100vh - 110px)" }}
-            allowFullScreen
-            allow="autoplay; fullscreen; encrypted-media; gyroscope; picture-in-picture"
-            onError={() => setLoadError("فشل تحميل اللعبة المضمّنة")}
-          />
-        ) : html ? (
+        ) : game.type === "embed" && game.file_url ? (() => {
+          // Parse sizing preferences from the URL hash (#lv=size=...&w=...&h=...&ar=...)
+          let embedSrc = game.file_url;
+          let embedStyle: React.CSSProperties = { width: "100%", height: "100%" };
+          let wrapperStyle: React.CSSProperties | null = null;
+          try {
+            const u = new URL(game.file_url);
+            const raw = u.hash.startsWith("#") ? u.hash.slice(1) : u.hash;
+            if (raw.startsWith("lv=")) {
+              const p = new URLSearchParams(raw.slice(3));
+              const size = p.get("size");
+              if (size === "fixed") {
+                const w = p.get("w") || "100%";
+                const h = p.get("h") || "600px";
+                embedStyle = { width: w, height: h, maxWidth: "100%" };
+                wrapperStyle = { display: "grid", placeItems: "center", padding: "12px" };
+              } else if (size === "responsive") {
+                const ar = p.get("ar") || "16/10";
+                if (!isFullscreen) {
+                  embedStyle = { width: "100%", aspectRatio: ar.replace("/", " / "), height: "auto", maxHeight: "calc(100vh - 110px)" };
+                }
+              }
+              u.hash = "";
+              embedSrc = u.toString();
+            }
+          } catch { /* keep defaults */ }
+          const frame = (
+            <iframe
+              ref={iframeRef}
+              src={embedSrc}
+              title={game.title}
+              className="block border-0"
+              style={{ ...(isFullscreen ? { width: "100%", height: "100%", minHeight: "100vh" } : embedStyle) }}
+              allowFullScreen
+              allow="autoplay; fullscreen; encrypted-media; gyroscope; picture-in-picture"
+              onError={() => setLoadError("فشل تحميل اللعبة المضمّنة")}
+            />
+          );
+          return wrapperStyle && !isFullscreen ? <div style={wrapperStyle}>{frame}</div> : frame;
+        })()
           <iframe
             ref={iframeRef}
             srcDoc={html}
