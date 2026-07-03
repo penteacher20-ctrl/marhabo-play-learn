@@ -283,6 +283,7 @@ function NewFromTemplate() {
           {slug === "blanks" && <BlanksBuilder list={blanksList} setList={setBlanksList} />}
           {slug === "matching" && <MatchingBuilder images={matchImages} setImages={setMatchImages} />}
           {slug === "wheel" && <WheelBuilder items={wheelItems} setItems={setWheelItems} />}
+          {slug === "tower" && <TowerBuilder qs={towerQs} setQs={setTowerQs} />}
           {slug === "puzzle" && (
             <div className="space-y-3">
               <Field label="صورة البازل (PNG/JPG)">
