@@ -12,8 +12,6 @@ const SLUG_RULES: Record<string, { min: number; max: number; label: string }> = 
   quiz: { min: 0, max: 0, label: "الاختبار" },
   blanks: { min: 0, max: 0, label: "الفراغات" },
   wheel: { min: 0, max: 0, label: "العجلة" },
-  tower: { min: 0, max: 0, label: "برج الأبطال" },
-
 };
 
 const inputSchema = z.object({
