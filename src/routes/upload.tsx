@@ -111,7 +111,6 @@ function UploadPage() {
       try { await supabase.auth.refreshSession(); } catch { /* ignore */ }
       const { data: sess } = await supabase.auth.getSession();
       if (!sess.session) throw new Error("انتهت جلستك، سجّل دخول من جديد");
-      const uid = sess.session.user.id;
 
       const ts = Date.now();
       let publicUrl = "";
