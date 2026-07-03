@@ -59,6 +59,10 @@ function UploadPage() {
   const [mode, setMode] = useState<Mode>("html");
   const [file, setFile] = useState<File | null>(null);
   const [embedCode, setEmbedCode] = useState("");
+  const [embedSize, setEmbedSize] = useState<"responsive" | "fixed">("responsive");
+  const [embedWidth, setEmbedWidth] = useState("100%");
+  const [embedHeight, setEmbedHeight] = useState("600");
+  const [embedAspect, setEmbedAspect] = useState("16/10");
   const [thumb, setThumb] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
