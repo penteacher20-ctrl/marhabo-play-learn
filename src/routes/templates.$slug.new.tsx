@@ -98,6 +98,11 @@ function NewFromTemplate() {
       if (items.length < 2) { toast.error("أضف عنصرين على الأقل"); return null; }
       return generateWheel({ title, items });
     }
+    if (slug === "tower") {
+      const qs = towerQs.filter(q => (q.question_ar.trim() || q.question_en.trim()) && q.answers_ar.some(a => a.trim()));
+      if (!qs.length) { toast.error("أضف سؤالاً واحداً على الأقل"); return null; }
+      return generateTower({ title, questions: qs });
+    }
     return null;
   };
 
