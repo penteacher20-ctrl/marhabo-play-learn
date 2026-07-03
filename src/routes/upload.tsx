@@ -117,6 +117,23 @@ function UploadPage() {
     if (mode === "embed") {
       const url = extractEmbedUrl(embedCode);
       if (!url) { toast.error("رمز التضمين غير صالح — الصق كود <iframe> أو رابط https من منصّة مدعومة"); return; }
+      // Build sizing hash appended to the URL so the player can restore user preferences.
+      // Hash is not sent to the remote server, so it never affects the embed request.
+      let finalUrl = url;
+      try {
+        const params = new URLSearchParams();
+        if (embedSize === "responsive") {
+          params.set("size", "responsive");
+          if (embedAspect) params.set("ar", embedAspect);
+        } else {
+          params.set("size", "fixed");
+          params.set("w", embedWidth || "100%");
+          params.set("h", /^\d+$/.test(embedHeight) ? `${embedHeight}px` : (embedHeight || "600px"));
+        }
+        const u = new URL(url);
+        u.hash = `lv=${params.toString()}`;
+        finalUrl = u.toString();
+      } catch { /* fall back to plain url */ }
       setBusy(true); setOverallPct(0);
       setStages([{ key: "save", label: "حفظ اللعبة", status: "active" }]);
       try {
@@ -128,7 +145,7 @@ function UploadPage() {
           if (!tErr) thumbUrl = supabase.storage.from("thumbnails").getPublicUrl(tp).data.publicUrl;
         }
         const { data: game, error: gErr } = await supabase.from("games").insert({
-          user_id: user.id, title, description: desc, type: "embed", file_url: url, thumbnail_url: thumbUrl, is_public: isPublic,
+          user_id: user.id, title, description: desc, type: "embed", file_url: finalUrl, thumbnail_url: thumbUrl, is_public: isPublic,
         }).select().single();
         if (gErr) throw new Error(`فشل الحفظ: ${gErr.message}`);
         setStages([{ key: "save", label: "حفظ اللعبة", status: "done" }]);
