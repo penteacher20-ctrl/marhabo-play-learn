@@ -109,7 +109,36 @@ function UploadPage() {
 
   const runUpload = async (e?: FormEvent) => {
     e?.preventDefault();
-    if (!file || !title) { toast.error("املأ كل الحقول"); return; }
+    if (!title) { toast.error("املأ العنوان"); return; }
+    if (mode === "embed") {
+      const url = extractEmbedUrl(embedCode);
+      if (!url) { toast.error("رمز التضمين غير صالح — الصق كود <iframe> أو رابط https من منصّة مدعومة"); return; }
+      setBusy(true); setOverallPct(0);
+      setStages([{ key: "save", label: "حفظ اللعبة", status: "active" }]);
+      try {
+        const ts = Date.now();
+        let thumbUrl: string | null = null;
+        if (thumb) {
+          const tp = `${user.id}/${ts}-${safe(thumb.name)}`;
+          const { error: tErr } = await supabase.storage.from("thumbnails").upload(tp, thumb);
+          if (!tErr) thumbUrl = supabase.storage.from("thumbnails").getPublicUrl(tp).data.publicUrl;
+        }
+        const { data: game, error: gErr } = await supabase.from("games").insert({
+          user_id: user.id, title, description: desc, type: "embed", file_url: url, thumbnail_url: thumbUrl, is_public: isPublic,
+        }).select().single();
+        if (gErr) throw new Error(`فشل الحفظ: ${gErr.message}`);
+        setStages([{ key: "save", label: "حفظ اللعبة", status: "done" }]);
+        setOverallPct(100);
+        toast.success("تم حفظ اللعبة بنجاح! 🎉");
+        navigate({ to: "/play/$gameId", params: { gameId: game.id } });
+      } catch (err: any) {
+        const msg = err?.message ?? "خطأ";
+        setStages([{ key: "save", label: "حفظ اللعبة", status: "error", detail: msg }]);
+        toast.error(msg);
+      } finally { setBusy(false); }
+      return;
+    }
+    if (!file) { toast.error("اختر الملف"); return; }
     setBusy(true); setOverallPct(0);
 
     const initial: Stage[] =
