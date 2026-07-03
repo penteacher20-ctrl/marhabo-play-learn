@@ -41,6 +41,9 @@ function NewFromTemplate() {
   const [puzzleImage, setPuzzleImage] = useState<File | null>(null);
   const [puzzleGrid, setPuzzleGrid] = useState(3);
   const [colorImage, setColorImage] = useState<File | null>(null);
+  const [towerQs, setTowerQs] = useState<TowerQuestion[]>([
+    { question_ar: "كم يساوي 5 + 3؟", question_en: "What is 5 + 3?", answers_ar: ["7", "8", "9"], answers_en: ["7", "8", "9"], correct: 1 },
+  ]);
 
   if (loading) {
     return (
