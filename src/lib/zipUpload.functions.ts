@@ -78,6 +78,7 @@ export const validateZipGame = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => inputSchema.parse(data))
   .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { indexUrl, folderPath } = data;
     const supaUrl = process.env.SUPABASE_URL!;
     const publicPrefix = `${supaUrl}/storage/v1/object/public/game-files/`;
@@ -112,22 +113,16 @@ export const validateZipGame = createServerFn({ method: "POST" })
     }
 
     // 4) list the whole folder recursively via Storage API and enforce limits
-    const listUrl = `${supaUrl}/storage/v1/object/list/game-files`;
     const walk = async (prefix: string, acc: Array<{ name: string; size: number }>) => {
       let offset = 0;
       // paginate defensively
       while (true) {
-        const res = await fetch(listUrl, {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            apikey: process.env.SUPABASE_PUBLISHABLE_KEY!,
-            authorization: `Bearer ${process.env.SUPABASE_PUBLISHABLE_KEY!}`,
-          },
-          body: JSON.stringify({ prefix, limit: 100, offset, sortBy: { column: "name", order: "asc" } }),
+        const { data: items, error } = await supabaseAdmin.storage.from("game-files").list(prefix, {
+          limit: 100,
+          offset,
+          sortBy: { column: "name", order: "asc" },
         });
-        if (!res.ok) throw new Error(`تعذّر التحقق من ملفات الأرشيف (${res.status})`);
-        const items = (await res.json()) as Array<{ name: string; id: string | null; metadata: { size?: number } | null }>;
+        if (error) throw new Error(`تعذّر التحقق من ملفات الأرشيف (${error.message})`);
         if (!items.length) break;
         for (const it of items) {
           const full = `${prefix}/${it.name}`;
