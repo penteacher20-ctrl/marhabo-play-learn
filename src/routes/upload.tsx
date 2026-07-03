@@ -59,6 +59,10 @@ function UploadPage() {
   const [mode, setMode] = useState<Mode>("html");
   const [file, setFile] = useState<File | null>(null);
   const [embedCode, setEmbedCode] = useState("");
+  const [embedSize, setEmbedSize] = useState<"responsive" | "fixed">("responsive");
+  const [embedWidth, setEmbedWidth] = useState("100%");
+  const [embedHeight, setEmbedHeight] = useState("600");
+  const [embedAspect, setEmbedAspect] = useState("16/10");
   const [thumb, setThumb] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
@@ -113,6 +117,23 @@ function UploadPage() {
     if (mode === "embed") {
       const url = extractEmbedUrl(embedCode);
       if (!url) { toast.error("رمز التضمين غير صالح — الصق كود <iframe> أو رابط https من منصّة مدعومة"); return; }
+      // Build sizing hash appended to the URL so the player can restore user preferences.
+      // Hash is not sent to the remote server, so it never affects the embed request.
+      let finalUrl = url;
+      try {
+        const params = new URLSearchParams();
+        if (embedSize === "responsive") {
+          params.set("size", "responsive");
+          if (embedAspect) params.set("ar", embedAspect);
+        } else {
+          params.set("size", "fixed");
+          params.set("w", embedWidth || "100%");
+          params.set("h", /^\d+$/.test(embedHeight) ? `${embedHeight}px` : (embedHeight || "600px"));
+        }
+        const u = new URL(url);
+        u.hash = `lv=${params.toString()}`;
+        finalUrl = u.toString();
+      } catch { /* fall back to plain url */ }
       setBusy(true); setOverallPct(0);
       setStages([{ key: "save", label: "حفظ اللعبة", status: "active" }]);
       try {
@@ -124,7 +145,7 @@ function UploadPage() {
           if (!tErr) thumbUrl = supabase.storage.from("thumbnails").getPublicUrl(tp).data.publicUrl;
         }
         const { data: game, error: gErr } = await supabase.from("games").insert({
-          user_id: user.id, title, description: desc, type: "embed", file_url: url, thumbnail_url: thumbUrl, is_public: isPublic,
+          user_id: user.id, title, description: desc, type: "embed", file_url: finalUrl, thumbnail_url: thumbUrl, is_public: isPublic,
         }).select().single();
         if (gErr) throw new Error(`فشل الحفظ: ${gErr.message}`);
         setStages([{ key: "save", label: "حفظ اللعبة", status: "done" }]);
@@ -349,6 +370,39 @@ function UploadPage() {
                       : <span className="inline-flex items-center gap-1 text-destructive"><XCircle className="w-3.5 h-3.5" /> رمز غير صالح أو منصّة غير مدعومة</span>}
                   </div>
                 )}
+                <div className="mt-4 rounded-2xl border-2 border-border bg-background/60 p-3 space-y-3">
+                  <div className="text-sm font-bold">📐 مقاس العرض</div>
+                  <div className="flex gap-1 p-1 bg-secondary/50 rounded-full w-fit">
+                    <button type="button" onClick={() => setEmbedSize("responsive")} className={`px-4 py-1.5 rounded-full text-xs font-bold ${embedSize === "responsive" ? "text-white" : "text-foreground"}`} style={embedSize === "responsive" ? { background: "var(--gradient-primary)" } : {}}>متجاوب (موصى به)</button>
+                    <button type="button" onClick={() => setEmbedSize("fixed")} className={`px-4 py-1.5 rounded-full text-xs font-bold ${embedSize === "fixed" ? "text-white" : "text-foreground"}`} style={embedSize === "fixed" ? { background: "var(--gradient-primary)" } : {}}>ثابت</button>
+                  </div>
+                  {embedSize === "responsive" ? (
+                    <label className="block">
+                      <span className="block text-xs font-bold mb-1">نسبة العرض إلى الارتفاع</span>
+                      <select value={embedAspect} onChange={(e) => setEmbedAspect(e.target.value)} className="input text-sm">
+                        <option value="16/9">16:9 (فيديو عريض)</option>
+                        <option value="16/10">16:10 (افتراضي)</option>
+                        <option value="4/3">4:3 (تقليدي)</option>
+                        <option value="1/1">1:1 (مربع)</option>
+                        <option value="3/4">3:4 (طولي)</option>
+                        <option value="9/16">9:16 (موبايل)</option>
+                      </select>
+                      <span className="block text-xs text-muted-foreground mt-1">يتكيّف تلقائيًا مع الجوال والحاسوب.</span>
+                    </label>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className="block">
+                        <span className="block text-xs font-bold mb-1">العرض</span>
+                        <input value={embedWidth} onChange={(e) => setEmbedWidth(e.target.value)} className="input text-sm" placeholder="100% أو 500px" />
+                      </label>
+                      <label className="block">
+                        <span className="block text-xs font-bold mb-1">الارتفاع (px)</span>
+                        <input value={embedHeight} onChange={(e) => setEmbedHeight(e.target.value)} className="input text-sm" placeholder="600" inputMode="numeric" />
+                      </label>
+                      <span className="col-span-2 block text-xs text-muted-foreground">قد لا يظهر جيدًا على الجوال إذا كان العرض بالبكسل.</span>
+                    </div>
+                  )}
+                </div>
               </label>
             ) : (
               <label
