@@ -108,6 +108,9 @@ function PlayPage() {
               } else if (gtype === "template:blanks") {
                 const sentences = extractJsonConst<{ text: string; answers: string[] }[]>(txt, "S");
                 if (sentences) txt = generateBlanks({ title: gtitle, sentences });
+              } else if (gtype === "template:tower") {
+                const qs = extractJsonConst<TowerQuestion[]>(txt, "Q");
+                if (qs) txt = generateTower({ title: gtitle, questions: qs });
               }
             } catch (regenErr) {
               console.warn("template auto-upgrade failed, using stored HTML", regenErr);
