@@ -107,10 +107,8 @@ export const validateZipGame = createServerFn({ method: "POST" })
     try { head = await fetch(indexUrl, { method: "HEAD" }); }
     catch { throw new Error("تعذّر الوصول إلى index.html (خطأ شبكة)"); }
     if (!head.ok) throw new Error(`index.html غير موجود (HTTP ${head.status})`);
-    const ct = (head.headers.get("content-type") || "").toLowerCase();
-    if (!ct.includes("text/html")) {
-      throw new Error(`نوع ملف الدخول غير صحيح (${ct || "غير معروف"})`);
-    }
+    // Content-Type check is advisory: some storage backends serve .html as text/plain.
+    // The extension check above (index.html?) is the source of truth.
 
     // 4) list the whole folder recursively via Storage API and enforce limits
     const walk = async (prefix: string, acc: Array<{ name: string; size: number }>) => {
