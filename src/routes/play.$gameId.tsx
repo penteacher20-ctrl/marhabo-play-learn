@@ -28,12 +28,15 @@ function PlayPage() {
   const [creator, setCreator] = useState<string>("");
   const [showEmbed, setShowEmbed] = useState(false);
   const [html, setHtml] = useState<string>("");
+  const [loadError, setLoadError] = useState<string>("");
+  const [reloadKey, setReloadKey] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fit, setFit] = useState<FitMode>("auto");
   const wrapRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
+
     (async () => {
       const { data } = await supabase.from("games").select("*").eq("id", gameId).maybeSingle();
       if (data) {
@@ -43,9 +46,13 @@ function PlayPage() {
         if (p) setCreator((p as any).name ?? "");
         if ((data as Game).file_url) {
           try {
+            setLoadError("");
             const fileUrl = (data as Game).file_url!;
             const res = await fetch(fileUrl);
+            if (!res.ok) throw new Error(`تعذّر جلب ملف اللعبة (HTTP ${res.status})`);
             let txt = await res.text();
+            if (!txt || txt.length < 20) throw new Error("ملف اللعبة فارغ أو تالف");
+
             const isColoring = (data as Game).type === "template:draw" && /const\s+SRC\s*=/.test(txt);
             const isPuzzle = (data as Game).type?.startsWith("template:puzzle") && /const\s+SRC\s*=/.test(txt);
             const isZip = (data as Game).type === "html-zip";
@@ -138,11 +145,14 @@ function PlayPage() {
             const inject = `${resizeScript}${celebrateScript}`;
             txt = txt.includes("</body>") ? txt.replace("</body>", `${inject}</body>`) : txt + inject;
             setHtml(txt);
-          } catch { /* ignore */ }
+          } catch (e: any) {
+            setLoadError(e?.message ?? "تعذّر تحميل اللعبة");
+          }
         }
       }
     })();
-  }, [gameId]);
+  }, [gameId, reloadKey]);
+
 
   useEffect(() => {
     const onFs = () => setIsFullscreen(!!document.fullscreenElement);
@@ -236,7 +246,22 @@ function PlayPage() {
             ✕ خروج
           </button>
         )}
-        {html ? (
+        {loadError ? (
+          <div className="grid place-items-center h-full min-h-[60vh] p-6">
+            <div className="max-w-md w-full bg-background rounded-2xl border-2 border-destructive/30 p-6 text-center space-y-3">
+              <div className="text-4xl">⚠️</div>
+              <div className="font-extrabold text-lg">تعذّر تحميل اللعبة</div>
+              <div className="text-sm text-muted-foreground break-words">{loadError}</div>
+              <button
+                onClick={() => { setLoadError(""); setHtml(""); setReloadKey((k) => k + 1); }}
+                className="bubble-btn text-white text-sm w-full"
+                style={{ background: "var(--gradient-primary)" }}
+              >
+                🔄 إعادة المحاولة
+              </button>
+            </div>
+          </div>
+        ) : html ? (
           <iframe
             ref={iframeRef}
             srcDoc={html}
@@ -245,6 +270,7 @@ function PlayPage() {
             style={{ ...iframeStyle, minHeight: isFullscreen ? "100vh" : "calc(100vh - 110px)" }}
             sandbox="allow-scripts allow-same-origin allow-downloads"
             allowFullScreen
+            onError={() => setLoadError("فشل عرض اللعبة داخل الإطار")}
           />
         ) : game.file_url ? (
           <div className="grid place-items-center h-96 text-muted-foreground">جاري تحميل اللعبة...</div>
@@ -253,3 +279,4 @@ function PlayPage() {
     </div>
   );
 }
+
