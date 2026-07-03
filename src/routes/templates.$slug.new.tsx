@@ -330,7 +330,7 @@ function NewFromTemplate() {
             {busy && <Loader2 className="w-5 h-5 animate-spin" />}
             {busy ? "جاري الإنشاء..." : "🚀 إنشاء اللعبة"}
           </button>
-        </div>
+        </fieldset>
       </div>
       <style>{`.input{width:100%;padding:.65rem 1rem;border-radius:1rem;background:#fff;border:2px solid var(--color-border);font:inherit;outline:none}.input:focus{border-color:var(--color-primary)}`}</style>
     </Wrapper>
