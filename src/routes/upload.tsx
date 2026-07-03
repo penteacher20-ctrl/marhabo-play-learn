@@ -304,7 +304,7 @@ function UploadPage() {
         <form onSubmit={runUpload} className="card-pop p-8 space-y-5">
           <fieldset disabled={busy} className="space-y-5 disabled:opacity-70">
             {/* Mode selector */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <ModeCard
                 active={mode === "html"}
                 onClick={() => { setMode("html"); setFile(null); setStages([]); }}
@@ -317,32 +317,63 @@ function UploadPage() {
                 onClick={() => { setMode("zip"); setFile(null); setStages([]); }}
                 icon="🗜️"
                 title="أرشيف ZIP كامل"
-                desc="لعبة متعددة الملفات (html + css + js + صور) داخل .zip، مع index.html."
+                desc="لعبة متعددة الملفات داخل .zip، مع index.html."
+              />
+              <ModeCard
+                active={mode === "embed"}
+                onClick={() => { setMode("embed"); setFile(null); setStages([]); }}
+                icon="🔗"
+                title="رمز تضمين (iframe)"
+                desc="ألصق كود <iframe> من Wordwall / YouTube / LearningApps..."
               />
             </div>
 
-            <label
-              onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
-              onDragLeave={() => setDrag(false)}
-              onDrop={onDrop}
-              className={`block border-3 border-dashed rounded-3xl p-8 text-center cursor-pointer transition ${drag ? "border-primary bg-primary/5" : "border-border bg-secondary/40"}`}
-              style={{ borderWidth: 3 }}
-            >
-              <input type="file" accept={acceptExt} hidden onChange={(e) => accept(e.target.files?.[0] ?? null)} />
-              <div className="text-4xl mb-2">{mode === "zip" ? "🗜️" : "📂"}</div>
-              <div className="font-bold">{file ? file.name : (mode === "zip" ? "اسحب ملف .zip هنا" : "اسحب ملف .html هنا")}</div>
-              <div className="text-xs text-muted-foreground mt-1">
-                {mode === "zip"
-                  ? `يجب أن يحتوي على index.html — حد أقصى ${MAX_FILES} ملف و${MAX_TOTAL / 1024 / 1024}MB`
-                  : "ملف واحد بامتداد .html"}
-              </div>
-              {file && (
-                <div className="mt-2 inline-flex items-center gap-2 text-xs bg-background rounded-full px-3 py-1 border border-border">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
-                  {mode === "zip" ? "أرشيف ZIP" : "ملف HTML"} — {(file.size / 1024).toFixed(1)}KB
+            {mode === "embed" ? (
+              <label className="block">
+                <span className="block text-sm font-bold mb-1.5">رمز التضمين أو رابط اللعبة</span>
+                <textarea
+                  value={embedCode}
+                  onChange={(e) => setEmbedCode(e.target.value)}
+                  rows={4}
+                  dir="ltr"
+                  className="input font-mono text-xs"
+                  placeholder='<iframe src="https://wordwall.net/ar/embed/..." width="500" height="380"></iframe>'
+                />
+                <span className="block text-xs text-muted-foreground mt-1.5">
+                  المنصّات المدعومة: Wordwall، YouTube، Vimeo، Scratch، LearningApps، H5P، Genially، Quizlet، Kahoot، Educandy، Flip.
+                </span>
+                {embedCode && (
+                  <div className="mt-2 text-xs">
+                    {extractEmbedUrl(embedCode)
+                      ? <span className="inline-flex items-center gap-1 text-green-700"><CheckCircle2 className="w-3.5 h-3.5" /> رمز صالح</span>
+                      : <span className="inline-flex items-center gap-1 text-destructive"><XCircle className="w-3.5 h-3.5" /> رمز غير صالح أو منصّة غير مدعومة</span>}
+                  </div>
+                )}
+              </label>
+            ) : (
+              <label
+                onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+                onDragLeave={() => setDrag(false)}
+                onDrop={onDrop}
+                className={`block border-3 border-dashed rounded-3xl p-8 text-center cursor-pointer transition ${drag ? "border-primary bg-primary/5" : "border-border bg-secondary/40"}`}
+                style={{ borderWidth: 3 }}
+              >
+                <input type="file" accept={acceptExt} hidden onChange={(e) => accept(e.target.files?.[0] ?? null)} />
+                <div className="text-4xl mb-2">{mode === "zip" ? "🗜️" : "📂"}</div>
+                <div className="font-bold">{file ? file.name : (mode === "zip" ? "اسحب ملف .zip هنا" : "اسحب ملف .html هنا")}</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {mode === "zip"
+                    ? `يجب أن يحتوي على index.html — حد أقصى ${MAX_FILES} ملف و${MAX_TOTAL / 1024 / 1024}MB`
+                    : "ملف واحد بامتداد .html"}
                 </div>
-              )}
-            </label>
+                {file && (
+                  <div className="mt-2 inline-flex items-center gap-2 text-xs bg-background rounded-full px-3 py-1 border border-border">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
+                    {mode === "zip" ? "أرشيف ZIP" : "ملف HTML"} — {(file.size / 1024).toFixed(1)}KB
+                  </div>
+                )}
+              </label>
+            )}
 
             <Field label={tr("game_title")}>
               <input value={title} onChange={(e) => setTitle(e.target.value)} className="input" required maxLength={200} />
