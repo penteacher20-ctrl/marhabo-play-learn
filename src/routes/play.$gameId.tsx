@@ -145,11 +145,14 @@ function PlayPage() {
             const inject = `${resizeScript}${celebrateScript}`;
             txt = txt.includes("</body>") ? txt.replace("</body>", `${inject}</body>`) : txt + inject;
             setHtml(txt);
-          } catch { /* ignore */ }
+          } catch (e: any) {
+            setLoadError(e?.message ?? "تعذّر تحميل اللعبة");
+          }
         }
       }
     })();
-  }, [gameId]);
+  }, [gameId, reloadKey]);
+
 
   useEffect(() => {
     const onFs = () => setIsFullscreen(!!document.fullscreenElement);
