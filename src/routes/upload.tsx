@@ -370,7 +370,56 @@ function UploadPage() {
                       : <span className="inline-flex items-center gap-1 text-destructive"><XCircle className="w-3.5 h-3.5" /> رمز غير صالح أو منصّة غير مدعومة</span>}
                   </div>
                 )}
+                <div className="mt-4 rounded-2xl border-2 border-border bg-background/60 p-3 space-y-3">
+                  <div className="text-sm font-bold">📐 مقاس العرض</div>
+                  <div className="flex gap-1 p-1 bg-secondary/50 rounded-full w-fit">
+                    <button type="button" onClick={() => setEmbedSize("responsive")} className={`px-4 py-1.5 rounded-full text-xs font-bold ${embedSize === "responsive" ? "text-white" : "text-foreground"}`} style={embedSize === "responsive" ? { background: "var(--gradient-primary)" } : {}}>متجاوب (موصى به)</button>
+                    <button type="button" onClick={() => setEmbedSize("fixed")} className={`px-4 py-1.5 rounded-full text-xs font-bold ${embedSize === "fixed" ? "text-white" : "text-foreground"}`} style={embedSize === "fixed" ? { background: "var(--gradient-primary)" } : {}}>ثابت</button>
+                  </div>
+                  {embedSize === "responsive" ? (
+                    <label className="block">
+                      <span className="block text-xs font-bold mb-1">نسبة العرض إلى الارتفاع</span>
+                      <select value={embedAspect} onChange={(e) => setEmbedAspect(e.target.value)} className="input text-sm">
+                        <option value="16/9">16:9 (فيديو عريض)</option>
+                        <option value="16/10">16:10 (افتراضي)</option>
+                        <option value="4/3">4:3 (تقليدي)</option>
+                        <option value="1/1">1:1 (مربع)</option>
+                        <option value="3/4">3:4 (طولي)</option>
+                        <option value="9/16">9:16 (موبايل)</option>
+                      </select>
+                      <span className="block text-xs text-muted-foreground mt-1">يتكيّف تلقائيًا مع الجوال والحاسوب.</span>
+                    </label>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className="block">
+                        <span className="block text-xs font-bold mb-1">العرض</span>
+                        <input value={embedWidth} onChange={(e) => setEmbedWidth(e.target.value)} className="input text-sm" placeholder="100% أو 500px" />
+                      </label>
+                      <label className="block">
+                        <span className="block text-xs font-bold mb-1">الارتفاع (px)</span>
+                        <input value={embedHeight} onChange={(e) => setEmbedHeight(e.target.value)} className="input text-sm" placeholder="600" inputMode="numeric" />
+                      </label>
+                      <span className="col-span-2 block text-xs text-muted-foreground">قد لا يظهر جيدًا على الجوال إذا كان العرض بالبكسل.</span>
+                    </div>
+                  )}
+                </div>
               </label>
+            ) : (
+              <label
+                onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+                onDragLeave={() => setDrag(false)}
+                onDrop={onDrop}
+                className={`block border-3 border-dashed rounded-3xl p-8 text-center cursor-pointer transition ${drag ? "border-primary bg-primary/5" : "border-border bg-secondary/40"}`}
+                style={{ borderWidth: 3 }}
+              >
+                <input type="file" accept={acceptExt} hidden onChange={(e) => accept(e.target.files?.[0] ?? null)} />
+                <div className="text-4xl mb-2">{mode === "zip" ? "🗜️" : "📂"}</div>
+                <div className="font-bold">{file ? file.name : (mode === "zip" ? "اسحب ملف .zip هنا" : "اسحب ملف .html هنا")}</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {mode === "zip"
+                    ? `يجب أن يحتوي على index.html — حد أقصى ${MAX_FILES} ملف و${MAX_TOTAL / 1024 / 1024}MB`
+                    : "ملف واحد بامتداد .html"}
+                </div>
             ) : (
               <label
                 onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
