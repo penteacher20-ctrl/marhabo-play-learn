@@ -27,9 +27,30 @@ const MAX_FILES = 200;
 const MAX_TOTAL = 50 * 1024 * 1024;
 const MAX_ONE = 8 * 1024 * 1024;
 
-type Mode = "html" | "zip";
+type Mode = "html" | "zip" | "embed";
 type StageStatus = "pending" | "active" | "done" | "error";
 interface Stage { key: string; label: string; status: StageStatus; detail?: string; pct?: number }
+
+const ALLOWED_EMBED_HOSTS = [
+  "wordwall.net", "youtube.com", "youtu.be", "youtube-nocookie.com",
+  "vimeo.com", "player.vimeo.com", "scratch.mit.edu", "learningapps.org",
+  "h5p.org", "h5p.com", "genially.com", "view.genially.com",
+  "quizlet.com", "kahoot.it", "educandy.com", "flip.com",
+];
+
+function extractEmbedUrl(input: string): string | null {
+  const s = input.trim();
+  if (!s) return null;
+  const m = s.match(/<iframe[^>]*\ssrc\s*=\s*["']([^"']+)["']/i);
+  const url = m ? m[1] : s;
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "https:") return null;
+    const host = u.hostname.toLowerCase();
+    if (!ALLOWED_EMBED_HOSTS.some((h) => host === h || host.endsWith("." + h))) return null;
+    return u.toString();
+  } catch { return null; }
+}
 
 function UploadPage() {
   const { tr } = useI18n();
@@ -37,6 +58,7 @@ function UploadPage() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<Mode>("html");
   const [file, setFile] = useState<File | null>(null);
+  const [embedCode, setEmbedCode] = useState("");
   const [thumb, setThumb] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
