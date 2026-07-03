@@ -420,22 +420,6 @@ function UploadPage() {
                     ? `يجب أن يحتوي على index.html — حد أقصى ${MAX_FILES} ملف و${MAX_TOTAL / 1024 / 1024}MB`
                     : "ملف واحد بامتداد .html"}
                 </div>
-            ) : (
-              <label
-                onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
-                onDragLeave={() => setDrag(false)}
-                onDrop={onDrop}
-                className={`block border-3 border-dashed rounded-3xl p-8 text-center cursor-pointer transition ${drag ? "border-primary bg-primary/5" : "border-border bg-secondary/40"}`}
-                style={{ borderWidth: 3 }}
-              >
-                <input type="file" accept={acceptExt} hidden onChange={(e) => accept(e.target.files?.[0] ?? null)} />
-                <div className="text-4xl mb-2">{mode === "zip" ? "🗜️" : "📂"}</div>
-                <div className="font-bold">{file ? file.name : (mode === "zip" ? "اسحب ملف .zip هنا" : "اسحب ملف .html هنا")}</div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  {mode === "zip"
-                    ? `يجب أن يحتوي على index.html — حد أقصى ${MAX_FILES} ملف و${MAX_TOTAL / 1024 / 1024}MB`
-                    : "ملف واحد بامتداد .html"}
-                </div>
                 {file && (
                   <div className="mt-2 inline-flex items-center gap-2 text-xs bg-background rounded-full px-3 py-1 border border-border">
                     <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
