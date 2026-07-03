@@ -44,6 +44,10 @@ function PlayPage() {
         await supabase.from("games").update({ play_count: (data as Game).play_count + 1 }).eq("id", gameId);
         const { data: p } = await supabase.from("profiles").select("name").eq("id", (data as Game).user_id).maybeSingle();
         if (p) setCreator((p as any).name ?? "");
+        if ((data as Game).type === "embed") {
+          // External embed (Wordwall, YouTube, etc.) — render iframe src directly, skip fetch.
+          return;
+        }
         if ((data as Game).file_url) {
           try {
             setLoadError("");
