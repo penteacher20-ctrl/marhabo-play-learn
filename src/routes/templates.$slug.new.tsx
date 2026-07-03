@@ -8,6 +8,11 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { generateQuiz, generateBlanks, generateMatching, generateWheel, generatePuzzle, generateDraw, generateColoring } from "@/lib/templates";
 import cardBackAsset from "@/assets/card-back.png.asset.json";
+import { Progress } from "@/components/ui/progress";
+import { Loader2, CheckCircle2, XCircle } from "lucide-react";
+
+type StageStatus = "pending" | "uploading" | "done" | "error";
+type Stage = { id: string; label: string; status: StageStatus; progress: number; error?: string };
 
 export const Route = createFileRoute("/templates/$slug/new")({ component: NewFromTemplate });
 
