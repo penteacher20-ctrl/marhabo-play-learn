@@ -459,6 +459,52 @@ function WheelBuilder({ items, setItems }: { items: string[]; setItems: any }) {
 }
 
 
+function TowerBuilder({ qs, setQs }: { qs: TowerQuestion[]; setQs: (v: TowerQuestion[]) => void }) {
+  const update = (i: number, patch: Partial<TowerQuestion>) => setQs(qs.map((q, k) => k === i ? { ...q, ...patch } : q));
+  const updateAns = (i: number, lang: "ar" | "en", oi: number, val: string) => {
+    const key = lang === "ar" ? "answers_ar" : "answers_en";
+    update(i, { [key]: qs[i][key].map((x, k) => k === oi ? val : x) } as any);
+  };
+  const addOpt = (i: number) => update(i, { answers_ar: [...qs[i].answers_ar, ""], answers_en: [...qs[i].answers_en, ""] });
+  const rmOpt = (i: number, oi: number) => update(i, {
+    answers_ar: qs[i].answers_ar.filter((_, k) => k !== oi),
+    answers_en: qs[i].answers_en.filter((_, k) => k !== oi),
+    correct: Math.max(0, Math.min(qs[i].correct, qs[i].answers_ar.length - 2)),
+  });
+  return (
+    <div>
+      <SectionHeader title="أسئلة برج الأبطال (ثنائية اللغة)" onAdd={() => setQs([...qs, { question_ar: "", question_en: "", answers_ar: ["", "", ""], answers_en: ["", "", ""], correct: 0 }])} />
+      <p className="text-xs text-muted-foreground mb-3">اكتب السؤال بالعربية والإنجليزية معًا، مع خيارات الإجابة لكل لغة. حدّد الإجابة الصحيحة.</p>
+      <div className="space-y-4">
+        {qs.map((q, i) => (
+          <div key={i} className="bg-secondary/40 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-sm">سؤال {i + 1}</span>
+              <button type="button" onClick={() => setQs(qs.filter((_, k) => k !== i))} className="px-3 rounded-xl bg-destructive/10 text-destructive font-bold">×</button>
+            </div>
+            <div className="grid md:grid-cols-2 gap-2">
+              <input dir="rtl" value={q.question_ar} onChange={(e) => update(i, { question_ar: e.target.value })} placeholder="السؤال بالعربية" className="input" />
+              <input dir="ltr" value={q.question_en} onChange={(e) => update(i, { question_en: e.target.value })} placeholder="Question in English" className="input" />
+            </div>
+            <div className="space-y-2">
+              {q.answers_ar.map((_, oi) => (
+                <div key={oi} className="flex items-center gap-2">
+                  <input type="radio" name={`t-${i}`} checked={q.correct === oi} onChange={() => update(i, { correct: oi })} className="w-5 h-5 accent-primary shrink-0" title="الإجابة الصحيحة" />
+                  <input dir="rtl" value={q.answers_ar[oi]} onChange={(e) => updateAns(i, "ar", oi, e.target.value)} placeholder={`إجابة عربية ${oi + 1}`} className="input flex-1" />
+                  <input dir="ltr" value={q.answers_en[oi]} onChange={(e) => updateAns(i, "en", oi, e.target.value)} placeholder={`Answer ${oi + 1}`} className="input flex-1" />
+                  {q.answers_ar.length > 2 && <button type="button" onClick={() => rmOpt(i, oi)} className="px-2 text-destructive font-bold">×</button>}
+                </div>
+              ))}
+              <button type="button" onClick={() => addOpt(i)} className="text-sm font-bold text-primary">+ خيار</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+
 function Wrapper({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--gradient-hero)" }}>
