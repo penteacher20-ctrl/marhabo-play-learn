@@ -21,6 +21,7 @@ interface Tpl {
   icon: string | null;
   is_available: boolean;
   sort_order: number;
+  external_url: string | null;
 }
 
 function AdminPage() {
