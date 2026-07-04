@@ -104,6 +104,8 @@ function TemplatesAdmin({ ar }: { ar: boolean }) {
 
   return (
     <div className="grid gap-4">
+      <NewTemplateForm ar={ar} onCreated={load} />
+
       {rows.map((t) => (
         <div key={t.id} className="card-pop p-5 grid md:grid-cols-[80px_1fr_auto] gap-4 items-start">
           <input
