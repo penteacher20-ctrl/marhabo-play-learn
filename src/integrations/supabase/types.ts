@@ -78,6 +78,7 @@ export type Database = {
         Row: {
           description_ar: string | null
           description_en: string | null
+          external_url: string | null
           icon: string | null
           id: string
           is_available: boolean
@@ -89,6 +90,7 @@ export type Database = {
         Insert: {
           description_ar?: string | null
           description_en?: string | null
+          external_url?: string | null
           icon?: string | null
           id?: string
           is_available?: boolean
@@ -100,6 +102,7 @@ export type Database = {
         Update: {
           description_ar?: string | null
           description_en?: string | null
+          external_url?: string | null
           icon?: string | null
           id?: string
           is_available?: boolean
