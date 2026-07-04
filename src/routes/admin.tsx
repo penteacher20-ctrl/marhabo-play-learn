@@ -21,6 +21,7 @@ interface Tpl {
   icon: string | null;
   is_available: boolean;
   sort_order: number;
+  external_url: string | null;
 }
 
 function AdminPage() {
@@ -103,6 +104,8 @@ function TemplatesAdmin({ ar }: { ar: boolean }) {
 
   return (
     <div className="grid gap-4">
+      <NewTemplateForm ar={ar} onCreated={load} />
+
       {rows.map((t) => (
         <div key={t.id} className="card-pop p-5 grid md:grid-cols-[80px_1fr_auto] gap-4 items-start">
           <input
@@ -127,6 +130,18 @@ function TemplatesAdmin({ ar }: { ar: boolean }) {
             <label className="block sm:col-span-2">
               <span className="text-xs font-bold text-muted-foreground">{ar ? "الوصف إنجليزي" : "Description EN"}</span>
               <input defaultValue={t.description_en ?? ""} onBlur={(e) => e.target.value !== (t.description_en ?? "") && save(t.id, { description_en: e.target.value })} className="input" />
+            </label>
+            <label className="block sm:col-span-2">
+              <span className="text-xs font-bold text-muted-foreground">
+                {ar ? "رابط خارجي (اختياري — iframe جاهز)" : "External URL (optional — ready iframe)"}
+              </span>
+              <input
+                type="url"
+                defaultValue={t.external_url ?? ""}
+                placeholder="https://wordwall.net/embed/..."
+                onBlur={(e) => e.target.value !== (t.external_url ?? "") && save(t.id, { external_url: e.target.value.trim() || null })}
+                className="input"
+              />
             </label>
             <label className="block">
               <span className="text-xs font-bold text-muted-foreground">{ar ? "الترتيب" : "Sort"}</span>
@@ -215,3 +230,78 @@ function AdminsAdmin({ ar }: { ar: boolean }) {
     </div>
   );
 }
+
+function NewTemplateForm({ ar, onCreated }: { ar: boolean; onCreated: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [f, setF] = useState({
+    slug: "", name_ar: "", name_en: "", icon: "🎮",
+    description_ar: "", description_en: "", external_url: "", sort_order: 100,
+  });
+  const upd = (k: keyof typeof f, v: string | number) => setF((p) => ({ ...p, [k]: v }));
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const slug = f.slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-");
+    if (!slug || !f.name_ar.trim() || !f.name_en.trim()) {
+      toast.error(ar ? "أكمل الحقول الأساسية" : "Fill required fields"); return;
+    }
+    if (f.external_url && !/^https:\/\/[^\s]+$/i.test(f.external_url.trim())) {
+      toast.error(ar ? "الرابط الخارجي يجب أن يبدأ بـ https://" : "External URL must start with https://"); return;
+    }
+    setBusy(true);
+    const { error } = await supabase.from("templates").insert({
+      slug, name_ar: f.name_ar.trim(), name_en: f.name_en.trim(),
+      icon: f.icon.trim() || "🎮",
+      description_ar: f.description_ar.trim() || null,
+      description_en: f.description_en.trim() || null,
+      external_url: f.external_url.trim() || null,
+      sort_order: Number(f.sort_order) || 100,
+      is_available: true,
+    });
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(ar ? "تم إنشاء القالب" : "Template created");
+    setF({ slug: "", name_ar: "", name_en: "", icon: "🎮", description_ar: "", description_en: "", external_url: "", sort_order: 100 });
+    setOpen(false); onCreated();
+  };
+
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)} className="bubble-btn text-white self-start" style={{ background: "var(--gradient-primary)" }}>
+        + {ar ? "قالب جديد (رابط خارجي أو داخلي)" : "New template (external or built-in)"}
+      </button>
+    );
+  }
+
+  return (
+    <form onSubmit={submit} className="card-pop p-5 space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="font-display font-extrabold text-lg">{ar ? "إنشاء قالب جديد" : "Create new template"}</h3>
+        <button type="button" onClick={() => setOpen(false)} className="text-sm text-muted-foreground hover:text-foreground">✕</button>
+      </div>
+      <div className="grid sm:grid-cols-2 gap-3">
+        <Field label={ar ? "المُعرّف (slug)" : "Slug"}><input required value={f.slug} onChange={(e) => upd("slug", e.target.value)} className="input" placeholder="my-template" /></Field>
+        <Field label={ar ? "الأيقونة" : "Icon"}><input value={f.icon} onChange={(e) => upd("icon", e.target.value)} className="input text-2xl" maxLength={4} /></Field>
+        <Field label={ar ? "الاسم عربي *" : "Name AR *"}><input required value={f.name_ar} onChange={(e) => upd("name_ar", e.target.value)} className="input" /></Field>
+        <Field label={ar ? "الاسم إنجليزي *" : "Name EN *"}><input required value={f.name_en} onChange={(e) => upd("name_en", e.target.value)} className="input" /></Field>
+        <Field label={ar ? "الوصف عربي" : "Description AR"}><input value={f.description_ar} onChange={(e) => upd("description_ar", e.target.value)} className="input" /></Field>
+        <Field label={ar ? "الوصف إنجليزي" : "Description EN"}><input value={f.description_en} onChange={(e) => upd("description_en", e.target.value)} className="input" /></Field>
+        <div className="sm:col-span-2">
+          <Field label={ar ? "رابط خارجي (اختياري — iframe جاهز مثل Wordwall / LearningApps)" : "External URL (optional — Wordwall, LearningApps...)"}>
+            <input type="url" value={f.external_url} onChange={(e) => upd("external_url", e.target.value)} className="input" placeholder="https://..." />
+          </Field>
+        </div>
+        <Field label={ar ? "الترتيب" : "Sort"}><input type="number" value={f.sort_order} onChange={(e) => upd("sort_order", Number(e.target.value))} className="input" /></Field>
+      </div>
+      <button disabled={busy} className="bubble-btn text-white disabled:opacity-60" style={{ background: "var(--gradient-primary)" }}>
+        {busy ? "..." : ar ? "إنشاء" : "Create"}
+      </button>
+    </form>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return <label className="block"><span className="text-xs font-bold text-muted-foreground block mb-1">{label}</span>{children}</label>;
+}
+
