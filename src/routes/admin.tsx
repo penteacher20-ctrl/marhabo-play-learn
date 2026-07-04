@@ -129,6 +129,18 @@ function TemplatesAdmin({ ar }: { ar: boolean }) {
               <span className="text-xs font-bold text-muted-foreground">{ar ? "الوصف إنجليزي" : "Description EN"}</span>
               <input defaultValue={t.description_en ?? ""} onBlur={(e) => e.target.value !== (t.description_en ?? "") && save(t.id, { description_en: e.target.value })} className="input" />
             </label>
+            <label className="block sm:col-span-2">
+              <span className="text-xs font-bold text-muted-foreground">
+                {ar ? "رابط خارجي (اختياري — iframe جاهز)" : "External URL (optional — ready iframe)"}
+              </span>
+              <input
+                type="url"
+                defaultValue={t.external_url ?? ""}
+                placeholder="https://wordwall.net/embed/..."
+                onBlur={(e) => e.target.value !== (t.external_url ?? "") && save(t.id, { external_url: e.target.value.trim() || null })}
+                className="input"
+              />
+            </label>
             <label className="block">
               <span className="text-xs font-bold text-muted-foreground">{ar ? "الترتيب" : "Sort"}</span>
               <input type="number" defaultValue={t.sort_order} onBlur={(e) => Number(e.target.value) !== t.sort_order && save(t.id, { sort_order: Number(e.target.value) })} className="input" />
