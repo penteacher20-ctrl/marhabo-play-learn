@@ -1,10 +1,12 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
+import { useRoles } from "@/lib/roles";
 
 export function Navbar() {
   const { tr, lang, setLang } = useI18n();
   const { user, signOut } = useAuth();
+  const { isAdmin } = useRoles();
   const navigate = useNavigate();
 
   return (
@@ -20,6 +22,7 @@ export function Navbar() {
           <NavItem to="/templates" label={tr("nav_templates")} />
           <NavItem to="/upload" label={tr("nav_upload")} />
           {user && <NavItem to="/dashboard" label={tr("nav_dashboard")} />}
+          {isAdmin && <NavItem to="/admin" label={lang === "ar" ? "الإدارة" : "Admin"} />}
         </nav>
 
         <div className="flex items-center gap-2">
