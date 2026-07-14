@@ -36,6 +36,8 @@ const ALLOWED_EMBED_HOSTS = [
   "vimeo.com", "player.vimeo.com", "scratch.mit.edu", "learningapps.org",
   "h5p.org", "h5p.com", "genially.com", "view.genially.com",
   "quizlet.com", "kahoot.it", "educandy.com", "flip.com",
+  "lovableproject.com", "lovable.app", "lovable.dev",
+  "netlify.app", "vercel.app", "github.io", "pages.dev", "codepen.io",
 ];
 
 function extractEmbedUrl(input: string): string | null {
