@@ -42,12 +42,21 @@ export function Navbar() {
             {lang === "ar" ? "EN" : "ع"}
           </button>
           {user ? (
-            <button onClick={() => signOut()} className="bubble-btn !px-5 !py-2 text-sm bg-secondary text-secondary-foreground">
-              {tr("nav_logout")}
+            <button
+              onClick={() => signOut()}
+              className="group inline-flex items-center gap-2 rounded-full bg-white/80 hover:bg-white text-foreground border border-border/60 px-4 py-2 text-sm font-bold shadow-sm hover:shadow-md transition-all"
+            >
+              <LogOut className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+              <span className="hidden sm:inline">{tr("nav_logout")}</span>
             </button>
           ) : (
-            <button onClick={() => navigate({ to: "/auth" })} className="bubble-btn !px-5 !py-2 text-sm text-white" style={{ background: "var(--gradient-fresh)" }}>
-              {tr("nav_login")}
+            <button
+              onClick={() => navigate({ to: "/auth" })}
+              className="group relative inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-extrabold text-white shadow-[0_6px_0_-2px_rgba(0,0,0,0.15),0_10px_20px_-6px_rgba(154,115,232,0.5)] hover:-translate-y-0.5 active:translate-y-0.5 transition-all"
+              style={{ background: "var(--gradient-primary)" }}
+            >
+              <LogIn className="w-4 h-4" />
+              <span>{tr("nav_login")}</span>
             </button>
           )}
         </div>
