@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { Sparkles, Gamepad2, ArrowLeft, ArrowRight } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -36,11 +37,23 @@ function Index() {
             </h1>
             <p className="mt-5 text-lg md:text-xl text-muted-foreground font-medium max-w-md mx-auto md:mx-0">{tr("hero_sub")}</p>
             <div className="mt-8 flex flex-wrap gap-4 justify-center md:justify-start">
-              <Link to="/auth" className="bubble-btn text-white" style={{ background: "var(--gradient-fresh)" }}>
-                ✨ {tr("cta_start")}
+              <Link
+                to="/auth"
+                className="group relative inline-flex items-center gap-2.5 rounded-full px-7 py-3.5 text-base font-extrabold text-white shadow-[0_8px_0_-2px_rgba(0,0,0,0.18),0_18px_32px_-10px_rgba(143,232,112,0.55)] hover:-translate-y-1 active:translate-y-0.5 transition-all overflow-hidden"
+                style={{ background: "var(--gradient-fresh)" }}
+              >
+                <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "linear-gradient(135deg, #2FEAFF, #8EE870)" }} />
+                <Sparkles className="relative w-5 h-5 drop-shadow-sm" />
+                <span className="relative">{tr("cta_start")}</span>
+                {lang === "ar" ? <ArrowLeft className="relative w-5 h-5 group-hover:-translate-x-1 transition-transform" /> : <ArrowRight className="relative w-5 h-5 group-hover:translate-x-1 transition-transform" />}
               </Link>
-              <Link to="/templates" className="bubble-btn text-foreground" style={{ background: "var(--yellow-fun)" }}>
-                🎮 {tr("cta_explore")}
+              <Link
+                to="/templates"
+                className="inline-flex items-center gap-2.5 rounded-full px-7 py-3.5 text-base font-extrabold text-foreground shadow-[0_6px_0_-2px_rgba(0,0,0,0.15),0_14px_24px_-10px_rgba(255,204,53,0.6)] hover:-translate-y-1 active:translate-y-0.5 transition-all"
+                style={{ background: "var(--yellow-fun)" }}
+              >
+                <Gamepad2 className="w-5 h-5" />
+                <span>{tr("cta_explore")}</span>
               </Link>
             </div>
           </div>
