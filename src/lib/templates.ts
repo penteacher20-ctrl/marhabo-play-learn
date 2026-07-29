@@ -39,6 +39,18 @@ const tail = `</div></body></html>`;
 function escapeHtml(s: string) { return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!)); }
 function escapeJs(s: string) { return JSON.stringify(s); }
 
+// Embed source config as JSON so the edit page can round-trip content.
+function embedConfig(slug: string, config: unknown): string {
+  const json = JSON.stringify(config).replace(/</g, "\\u003c");
+  return `<script type="application/json" id="__MARHABO_CONFIG__" data-slug="${slug}">${json}</script>`;
+}
+
+export function extractEmbeddedConfig(html: string): { slug: string; config: any } | null {
+  const m = html.match(/<script type="application\/json" id="__MARHABO_CONFIG__" data-slug="([^"]+)">([\s\S]*?)<\/script>/);
+  if (!m) return null;
+  try { return { slug: m[1], config: JSON.parse(m[2].replace(/\\u003c/g, "<")) }; } catch { return null; }
+}
+
 export interface QuizConfig { title: string; questions: { q: string; options: string[]; correct: number }[]; }
 export function generateQuiz(c: QuizConfig): string {
   const data = c.questions.map(q => ({ q: q.q, options: q.options, correct: q.correct }));
@@ -807,7 +819,7 @@ body.en{font-family:'Fredoka','Tajawal',sans-serif}
 .confetti span{position:absolute;top:-10vh;width:10px;height:16px;border-radius:2px;animation:fall linear forwards}
 @keyframes fall{to{transform:translateY(120vh) rotate(720deg)}}
 </style></head>
-<body>
+<body>${embedConfig('tower', c)}
 <div id="stage" class="stage-1">
   <div class="parallax" id="para"></div>
   <div id="world">
