@@ -819,7 +819,7 @@ body.en{font-family:'Fredoka','Tajawal',sans-serif}
 .confetti span{position:absolute;top:-10vh;width:10px;height:16px;border-radius:2px;animation:fall linear forwards}
 @keyframes fall{to{transform:translateY(120vh) rotate(720deg)}}
 </style></head>
-<body>
+<body>${embedConfig('tower', c)}
 <div id="stage" class="stage-1">
   <div class="parallax" id="para"></div>
   <div id="world">
