@@ -44,31 +44,36 @@ function Index() {
         <FloatingDeco />
         <div className="container mx-auto px-4 py-12 md:py-20 grid md:grid-cols-2 gap-10 items-center relative">
           <div className="order-2 md:order-1 text-center md:text-start">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-yellow-fun/30 text-foreground font-bold text-sm mb-6">
-              🎉 {tr("more_games")}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/70 backdrop-blur-md border border-white/60 text-foreground/80 font-bold text-xs sm:text-sm mb-6 shadow-sm">
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--coral)" }} />
+              <span>🎉 {tr("more_games")}</span>
             </div>
-            <h1 className="text-5xl md:text-7xl font-display font-black leading-tight">
+            <h1 className="text-5xl md:text-7xl font-display font-black leading-[1.05] tracking-tight text-foreground">
               {lang === "ar" ? <>تعلّم <span style={{ color: "var(--coral)" }}>باللعب</span>!</> : <>Learn by <span style={{ color: "var(--coral)" }}>playing</span>!</>}
             </h1>
-            <p className="mt-5 text-lg md:text-xl text-muted-foreground font-medium max-w-md mx-auto md:mx-0">{tr("hero_sub")}</p>
-            <div className="mt-8 flex flex-wrap gap-4 justify-center md:justify-start">
+            <p className="mt-5 text-base md:text-lg text-foreground/70 font-medium max-w-md mx-auto md:mx-0 leading-relaxed">{tr("hero_sub")}</p>
+            <div className="mt-9 flex flex-wrap gap-3 justify-center md:justify-start">
               <Link
                 to="/auth"
-                className="group relative inline-flex items-center gap-2.5 rounded-full px-7 py-3.5 text-base font-extrabold text-white shadow-[0_8px_0_-2px_rgba(0,0,0,0.18),0_18px_32px_-10px_rgba(143,232,112,0.55)] hover:-translate-y-1 active:translate-y-0.5 transition-all overflow-hidden"
-                style={{ background: "var(--gradient-fresh)" }}
+                className="group relative inline-flex items-center gap-2.5 rounded-2xl px-6 py-3.5 text-base font-extrabold text-white overflow-hidden transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0"
+                style={{
+                  background: "var(--gradient-primary)",
+                  boxShadow: "0 1px 0 rgba(255,255,255,0.35) inset, 0 -2px 0 rgba(0,0,0,0.12) inset, 0 10px 24px -8px color-mix(in oklab, var(--coral) 55%, transparent)",
+                }}
               >
-                <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "linear-gradient(135deg, #2FEAFF, #8EE870)" }} />
-                <Sparkles className="relative w-5 h-5 drop-shadow-sm" />
-                <span className="relative">{tr("cta_start")}</span>
-                {lang === "ar" ? <ArrowLeft className="relative w-5 h-5 group-hover:-translate-x-1 transition-transform" /> : <ArrowRight className="relative w-5 h-5 group-hover:translate-x-1 transition-transform" />}
+                <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 rounded-t-2xl opacity-70" style={{ background: "linear-gradient(to bottom, rgba(255,255,255,0.35), transparent)" }} />
+                <Sparkles className="relative w-[18px] h-[18px]" />
+                <span className="relative tracking-tight">{tr("cta_start")}</span>
+                {lang === "ar"
+                  ? <ArrowLeft className="relative w-[18px] h-[18px] transition-transform group-hover:-translate-x-1" />
+                  : <ArrowRight className="relative w-[18px] h-[18px] transition-transform group-hover:translate-x-1" />}
               </Link>
               <Link
                 to="/templates"
-                className="inline-flex items-center gap-2.5 rounded-full px-7 py-3.5 text-base font-extrabold text-foreground shadow-[0_6px_0_-2px_rgba(0,0,0,0.15),0_14px_24px_-10px_rgba(255,204,53,0.6)] hover:-translate-y-1 active:translate-y-0.5 transition-all"
-                style={{ background: "var(--yellow-fun)" }}
+                className="inline-flex items-center gap-2.5 rounded-2xl px-6 py-3.5 text-base font-extrabold bg-white/80 backdrop-blur-md border border-foreground/10 text-foreground shadow-sm hover:bg-white hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300"
               >
-                <Gamepad2 className="w-5 h-5" />
-                <span>{tr("cta_explore")}</span>
+                <Gamepad2 className="w-[18px] h-[18px]" style={{ color: "var(--coral)" }} />
+                <span className="tracking-tight">{tr("cta_explore")}</span>
               </Link>
             </div>
           </div>
