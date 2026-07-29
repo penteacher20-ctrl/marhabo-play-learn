@@ -11,13 +11,22 @@ import mascot from "@/assets/mascot-fox.png";
 export const Route = createFileRoute("/")({ component: Index });
 
 interface Tpl { id: string; slug: string; name_ar: string; name_en: string; description_ar: string | null; description_en: string | null; icon: string | null; is_available: boolean; }
+interface CommunityGame { id: string; title: string; description: string | null; thumbnail_url: string | null; play_count: number; created_at: string; user_id: string; profiles?: { name: string | null } | null; }
 
 function Index() {
   const { tr, lang } = useI18n();
   const [templates, setTemplates] = useState<Tpl[]>([]);
+  const [communityGames, setCommunityGames] = useState<CommunityGame[]>([]);
 
   useEffect(() => {
     supabase.from("templates").select("*").order("sort_order").then(({ data }) => setTemplates((data as Tpl[]) ?? []));
+    supabase
+      .from("games")
+      .select("id,title,description,thumbnail_url,play_count,created_at,user_id, profiles(name)")
+      .eq("is_public", true)
+      .order("created_at", { ascending: false })
+      .limit(8)
+      .then(({ data }) => setCommunityGames((data as any) ?? []));
   }, []);
 
   return (
