@@ -78,10 +78,25 @@ function EditGame() {
       setDesc(g.description ?? "");
       setIsPublic(g.is_public);
       setThumbUrl(g.thumbnail_url);
-      setGameType(g.type ?? "");
+      setGameType(gtype);
       setFileUrl(g.file_url ?? null);
-      const gtype: string = g.type ?? "";
-      if (gtype.startsWith("template:") && g.file_url) {
+      if (gtype === "embed" && g.file_url) {
+        setEmbedCode(g.file_url);
+        try {
+          const u = new URL(g.file_url);
+          const hash = u.hash.startsWith("#lv=") ? u.hash.slice(4) : "";
+          const p = new URLSearchParams(hash);
+          const sz = p.get("size");
+          if (sz === "fixed") {
+            setEmbedSize("fixed");
+            setEmbedWidth(p.get("w") ?? "100%");
+            setEmbedHeight((p.get("h") ?? "600").replace(/px$/, ""));
+          } else {
+            setEmbedSize("responsive");
+            setEmbedAspect(p.get("ar") ?? "16/10");
+          }
+        } catch { /* ignore */ }
+      } else if (gtype.startsWith("template:") && g.file_url) {
         try {
           const res = await fetch(g.file_url);
           const txt = await res.text();
