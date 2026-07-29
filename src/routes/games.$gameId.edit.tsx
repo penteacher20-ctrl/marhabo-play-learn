@@ -51,8 +51,20 @@ function EditGame() {
   const [pairs, setPairs] = useState<Pair[]>([]);
   const [towerQs, setTowerQs] = useState<TowerQuestion[]>([]);
 
+  // Embed
+  const [embedCode, setEmbedCode] = useState("");
+  const [embedSize, setEmbedSize] = useState<"responsive" | "fixed">("responsive");
+  const [embedWidth, setEmbedWidth] = useState("100%");
+  const [embedHeight, setEmbedHeight] = useState("600");
+  const [embedAspect, setEmbedAspect] = useState("16/10");
+
+  // HTML replacement
+  const [newHtmlFile, setNewHtmlFile] = useState<File | null>(null);
+
   const slug = gameType.startsWith("template:") ? gameType.slice("template:".length) : "";
   const isPuzzle = slug === "puzzle";
+  const isEmbed = gameType === "embed";
+  const isHtml = gameType === "html" || gameType === "zip";
   const editableContent = ["quiz", "blanks", "wheel", "tower"].includes(slug) || (slug === "matching" && pairs.length > 0);
 
   useEffect(() => {
