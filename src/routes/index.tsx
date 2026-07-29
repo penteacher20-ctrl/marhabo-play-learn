@@ -138,7 +138,11 @@ function TemplateCard({ t, idx }: { t: Tpl; idx: number }) {
   return (
     <div className="card-pop p-6 relative overflow-hidden">
       <div className="absolute -top-10 -end-10 w-32 h-32 rounded-full opacity-20" style={{ background: color }} />
-      <div className="text-5xl mb-3">{t.icon}</div>
+      {t.icon && /^https?:\/\//i.test(t.icon) ? (
+        <img src={t.icon} alt="" className="w-14 h-14 object-cover rounded-2xl mb-3" />
+      ) : (
+        <div className="text-5xl mb-3">{t.icon}</div>
+      )}
       <h3 className="text-xl font-display font-extrabold">{lang === "ar" ? t.name_ar : t.name_en}</h3>
       <p className="text-sm text-muted-foreground mt-1 mb-4">{lang === "ar" ? t.description_ar : t.description_en}</p>
       {t.is_available ? (
