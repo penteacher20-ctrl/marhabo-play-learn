@@ -273,6 +273,38 @@ function EditGame() {
             </div>
           )}
 
+          {contentLoaded && isEmbed && (
+            <div className="rounded-2xl border-2 border-dashed border-primary/40 p-4 space-y-3 bg-primary/5">
+              <div className="font-bold text-primary">🔗 كود التضمين</div>
+              <Field label="رابط أو كود <iframe>">
+                <textarea dir="ltr" value={embedCode} onChange={(e) => setEmbedCode(e.target.value)} rows={3} className="input font-mono text-xs" placeholder="https://... أو <iframe src=...>" />
+              </Field>
+              <div className="flex gap-2 flex-wrap">
+                <button type="button" onClick={() => setEmbedSize("responsive")} className={`px-4 py-1.5 rounded-full text-sm font-bold border-2 ${embedSize === "responsive" ? "bg-primary text-white border-primary" : "border-border"}`}>متجاوب</button>
+                <button type="button" onClick={() => setEmbedSize("fixed")} className={`px-4 py-1.5 rounded-full text-sm font-bold border-2 ${embedSize === "fixed" ? "bg-primary text-white border-primary" : "border-border"}`}>ثابت</button>
+              </div>
+              {embedSize === "responsive" ? (
+                <Field label="نسبة العرض (aspect ratio)">
+                  <input value={embedAspect} onChange={(e) => setEmbedAspect(e.target.value)} placeholder="16/10" className="input" />
+                </Field>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="العرض"><input value={embedWidth} onChange={(e) => setEmbedWidth(e.target.value)} className="input" placeholder="100%" /></Field>
+                  <Field label="الارتفاع (px)"><input value={embedHeight} onChange={(e) => setEmbedHeight(e.target.value)} className="input" placeholder="600" /></Field>
+                </div>
+              )}
+            </div>
+          )}
+
+          {contentLoaded && isHtml && (
+            <div className="rounded-2xl border-2 border-dashed border-primary/40 p-4 space-y-2 bg-primary/5">
+              <div className="font-bold text-primary">📄 ملف اللعبة (HTML)</div>
+              {fileUrl && <a href={fileUrl} target="_blank" rel="noreferrer" className="text-xs text-primary underline block break-all">الملف الحالي</a>}
+              <input type="file" accept=".html,.htm,text/html" onChange={(e) => setNewHtmlFile(e.target.files?.[0] ?? null)} className="text-sm" />
+              <p className="text-xs text-muted-foreground">اختياري: ارفع ملف HTML جديد لاستبدال محتوى اللعبة.</p>
+            </div>
+          )}
+
           {contentLoaded && slug && !canEditContent && !isPuzzle && (
             <p className="text-sm text-muted-foreground bg-secondary/40 rounded-xl p-3">
               لا يمكن تعديل محتوى هذا النوع من الألعاب مباشرة هنا. يمكنك تعديل العنوان والوصف والصورة.
