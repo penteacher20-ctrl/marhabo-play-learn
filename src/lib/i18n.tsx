@@ -53,6 +53,11 @@ export const t: Dict = {
   no_account: { ar: "ليس لديك حساب؟", en: "No account?" },
   more_games: { ar: "أكثر من ٣٥ لعبة تعليمية", en: "Over 35 educational games" },
   footer: { ar: "صُنع بحب للأطفال 💜", en: "Made with love for kids 💜" },
+  community_title: { ar: "ألعاب من صنع الأعضاء", en: "Games by our community" },
+  community_sub: { ar: "استكشف أحدث الألعاب التي أنشأها المعلمون والأطفال", en: "Explore the latest games created by teachers and kids" },
+  play_now: { ar: "العب الآن", en: "Play now" },
+  view_all: { ar: "عرض الكل", en: "View all" },
+  by: { ar: "بواسطة", en: "by" },
 };
 
 interface Ctx { lang: Lang; setLang: (l: Lang) => void; tr: (k: keyof typeof t) => string; }
