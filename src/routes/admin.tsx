@@ -164,7 +164,7 @@ function AdminPage() {
             </aside>
 
             {/* Content */}
-            <section className="min-w-0">
+            <section className="min-w-0 admin-scope">
               <div className="mb-5 pb-4 border-b border-slate-200">
                 <h2 className="font-display text-2xl font-black text-slate-900 flex items-center gap-2">
                   <current.icon className="w-5 h-5 text-primary" />
@@ -177,6 +177,15 @@ function AdminPage() {
               {tab === "suggestions" && <SuggestionsAdmin ar={ar} />}
               {tab === "site" && <SiteAdmin ar={ar} />}
               {tab === "users" && <AdminsAdmin ar={ar} />}
+
+              <style>{`
+                .admin-scope .card-pop { border-radius: 1rem; box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 1px 3px rgba(15,23,42,0.06); border: 1px solid rgb(226 232 240); background: #fff; transition: box-shadow .2s ease; }
+                .admin-scope .card-pop:hover { transform: none; box-shadow: 0 2px 4px rgba(15,23,42,0.06), 0 4px 12px rgba(15,23,42,0.08); }
+                .admin-scope .bubble-btn { border-radius: 0.75rem; padding: 0.6rem 1.1rem; box-shadow: 0 1px 2px rgba(15,23,42,0.08); }
+                .admin-scope .bubble-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(15,23,42,0.12); }
+                .admin-scope .bubble-btn:active { transform: translateY(0); }
+                .admin-scope .input { border-radius: 0.6rem !important; }
+              `}</style>
             </section>
           </div>
         </div>
