@@ -572,3 +572,106 @@ function SuggestionDrawer({ ar, sugg, onClose, onSaved, onDelete }: {
     </div>
   );
 }
+
+async function uploadSiteAsset(file: File, userId: string, kind: "logo" | "favicon"): Promise<string> {
+  const ext = (file.name.split(".").pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const path = `${userId}/site/${kind}-${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from("thumbnails").upload(path, file, {
+    cacheControl: "3600", upsert: false, contentType: file.type || undefined,
+  });
+  if (error) throw error;
+  const { data } = supabase.storage.from("thumbnails").getPublicUrl(path);
+  return data.publicUrl;
+}
+
+function SiteAdmin({ ar }: { ar: boolean }) {
+  const { user } = useAuth();
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [faviconUrl, setFaviconUrl] = useState<string | null>(null);
+  const [busy, setBusy] = useState<null | "logo" | "favicon">(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    const { data } = await supabase.from("site_settings").select("logo_url, favicon_url").eq("id", "main").maybeSingle();
+    setLogoUrl(data?.logo_url ?? null);
+    setFaviconUrl(data?.favicon_url ?? null);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const save = async (patch: { logo_url?: string | null; favicon_url?: string | null }) => {
+    const { error } = await supabase.from("site_settings").update({ ...patch, updated_by: user?.id ?? null }).eq("id", "main");
+    if (error) { toast.error(error.message); return false; }
+    toast.success(ar ? "تم الحفظ" : "Saved");
+    return true;
+  };
+
+  const pick = async (e: React.ChangeEvent<HTMLInputElement>, kind: "logo" | "favicon") => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !user) return;
+    if (file.size > 2 * 1024 * 1024) { toast.error(ar ? "الحد الأقصى 2 ميجا" : "Max 2MB"); return; }
+    setBusy(kind);
+    try {
+      const url = await uploadSiteAsset(file, user.id, kind);
+      const ok = await save(kind === "logo" ? { logo_url: url } : { favicon_url: url });
+      if (ok) { if (kind === "logo") setLogoUrl(url); else setFaviconUrl(url); }
+    } catch (err: any) { toast.error(err.message); }
+    finally { setBusy(null); }
+  };
+
+  const clear = async (kind: "logo" | "favicon") => {
+    const ok = await save(kind === "logo" ? { logo_url: null } : { favicon_url: null });
+    if (ok) { if (kind === "logo") setLogoUrl(null); else setFaviconUrl(null); }
+  };
+
+  if (loading) return <div className="text-center text-muted-foreground py-8">...</div>;
+
+  return (
+    <div className="grid gap-5 max-w-3xl">
+      <div className="card-pop p-6">
+        <h2 className="text-xl font-display font-black mb-1">{ar ? "لوجو الموقع" : "Site Logo"}</h2>
+        <p className="text-sm text-muted-foreground mb-4">{ar ? "الصورة اللي هتظهر جنب اسم الموقع في الهيدر (يفضل مربعة، حتى 2 ميجا)." : "Shown next to the brand name in the header (square, up to 2MB)."}</p>
+        <div className="flex items-center gap-5 flex-wrap">
+          <div className="h-20 w-20 rounded-2xl border-2 border-border bg-white overflow-hidden flex items-center justify-center relative">
+            {logoUrl ? <img src={logoUrl} alt="logo" className="w-full h-full object-cover" /> : <span className="text-3xl">م</span>}
+            {busy === "logo" && <div className="absolute inset-0 bg-white/70 grid place-items-center text-xs">...</div>}
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="bubble-btn bg-primary text-white cursor-pointer inline-flex items-center gap-2 text-sm">
+              📷 {ar ? "رفع لوجو" : "Upload Logo"}
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => pick(e, "logo")} />
+            </label>
+            {logoUrl && (
+              <button onClick={() => clear("logo")} className="text-xs font-bold text-destructive hover:underline text-start">
+                ✕ {ar ? "إزالة اللوجو" : "Remove logo"}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="card-pop p-6">
+        <h2 className="text-xl font-display font-black mb-1">{ar ? "أيقونة الموقع (Favicon)" : "Favicon"}</h2>
+        <p className="text-sm text-muted-foreground mb-4">{ar ? "الأيقونة اللي بتظهر في تبويب المتصفح (PNG أو SVG، مربعة، حتى 2 ميجا)." : "Shown in the browser tab (PNG/SVG, square, up to 2MB)."}</p>
+        <div className="flex items-center gap-5 flex-wrap">
+          <div className="h-16 w-16 rounded-xl border-2 border-border bg-white overflow-hidden flex items-center justify-center relative">
+            {faviconUrl ? <img src={faviconUrl} alt="favicon" className="w-full h-full object-cover" /> : <span className="text-xl">⭐</span>}
+            {busy === "favicon" && <div className="absolute inset-0 bg-white/70 grid place-items-center text-xs">...</div>}
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="bubble-btn bg-primary text-white cursor-pointer inline-flex items-center gap-2 text-sm">
+              📷 {ar ? "رفع أيقونة" : "Upload Favicon"}
+              <input type="file" accept="image/png,image/svg+xml,image/x-icon,image/vnd.microsoft.icon,image/webp" className="hidden" onChange={(e) => pick(e, "favicon")} />
+            </label>
+            {faviconUrl && (
+              <button onClick={() => clear("favicon")} className="text-xs font-bold text-destructive hover:underline text-start">
+                ✕ {ar ? "إزالة الأيقونة" : "Remove favicon"}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
