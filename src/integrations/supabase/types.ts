@@ -142,6 +142,44 @@ export type Database = {
         }
         Relationships: []
       }
+      suggestion_messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          image_paths: string[]
+          is_admin: boolean
+          sender_id: string
+          suggestion_id: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          id?: string
+          image_paths?: string[]
+          is_admin?: boolean
+          sender_id: string
+          suggestion_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          image_paths?: string[]
+          is_admin?: boolean
+          sender_id?: string
+          suggestion_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suggestion_messages_suggestion_id_fkey"
+            columns: ["suggestion_id"]
+            isOneToOne: false
+            referencedRelation: "suggestions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suggestions: {
         Row: {
           admin_response: string | null

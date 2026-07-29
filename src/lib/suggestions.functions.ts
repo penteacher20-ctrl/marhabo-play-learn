@@ -15,7 +15,7 @@ async function assertAdmin(ctx: { supabase: any; userId: string }) {
 
 export const createSuggestion = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { title: string; description: string; image_path?: string | null; link_url?: string | null }) => {
+  .inputValidator((d: { title: string; description: string; image_paths?: string[] | null; link_url?: string | null }) => {
     const title = (d?.title ?? "").trim();
     const description = (d?.description ?? "").trim();
     if (!title) throw new Error("Title required");
@@ -24,11 +24,10 @@ export const createSuggestion = createServerFn({ method: "POST" })
     if (description.length > 5000) throw new Error("Description too long");
     const link = (d.link_url ?? "").trim();
     if (link && !/^https?:\/\/[^\s]+$/i.test(link)) throw new Error("Invalid link");
-    return {
-      title, description,
-      image_path: d.image_path?.trim() || null,
-      link_url: link || null,
-    };
+    const paths = Array.isArray(d.image_paths)
+      ? d.image_paths.map((p) => (p || "").trim()).filter(Boolean).slice(0, 8)
+      : [];
+    return { title, description, image_paths: paths, link_url: link || null };
   })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
@@ -38,12 +37,21 @@ export const createSuggestion = createServerFn({ method: "POST" })
         user_id: userId,
         title: data.title,
         description: data.description,
-        image_url: data.image_path,
+        image_url: data.image_paths[0] ?? null,
         link_url: data.link_url,
       })
       .select("id, title")
       .single();
     if (error) throw new Error(error.message);
+
+    // Seed the chat thread with the opening message from the user (holds all images)
+    await supabase.from("suggestion_messages").insert({
+      suggestion_id: inserted.id,
+      sender_id: userId,
+      is_admin: false,
+      body: data.description,
+      image_paths: data.image_paths,
+    });
 
     // Fetch author name
     const { data: prof } = await supabase.from("profiles").select("name").eq("id", userId).maybeSingle();
@@ -69,6 +77,112 @@ export const createSuggestion = createServerFn({ method: "POST" })
     }
 
     return { ok: true, id: inserted.id };
+  });
+
+async function assertSuggestionAccess(ctx: { supabase: any; userId: string }, suggestionId: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: s } = await supabaseAdmin
+    .from("suggestions").select("id,user_id,title").eq("id", suggestionId).maybeSingle();
+  if (!s) throw new Error("Not found");
+  const isOwner = s.user_id === ctx.userId;
+  const admin = !isOwner && (await isAdminCtx(ctx));
+  if (!isOwner && !admin) throw new Error("Forbidden");
+  return { suggestion: s, isAdmin: admin };
+}
+
+export const getSuggestionMessages = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { suggestion_id: string }) => {
+    if (!d?.suggestion_id) throw new Error("suggestion_id required");
+    return { suggestion_id: d.suggestion_id };
+  })
+  .handler(async ({ data, context }) => {
+    await assertSuggestionAccess(context, data.suggestion_id);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: msgs, error } = await supabaseAdmin
+      .from("suggestion_messages")
+      .select("id,sender_id,is_admin,body,image_paths,created_at")
+      .eq("suggestion_id", data.suggestion_id)
+      .order("created_at", { ascending: true });
+    if (error) throw new Error(error.message);
+    const senderIds = Array.from(new Set((msgs ?? []).map((m: any) => m.sender_id)));
+    const nameMap = new Map<string, string | null>();
+    if (senderIds.length) {
+      const { data: profs } = await supabaseAdmin.from("profiles").select("id,name").in("id", senderIds);
+      (profs ?? []).forEach((p: any) => nameMap.set(p.id, p.name));
+    }
+    // Sign images
+    const allPaths = Array.from(new Set((msgs ?? []).flatMap((m: any) => m.image_paths ?? [])));
+    const signedMap = new Map<string, string>();
+    if (allPaths.length) {
+      const { data: signed } = await supabaseAdmin.storage
+        .from("suggestion-images").createSignedUrls(allPaths, 3600);
+      (signed ?? []).forEach((s: any) => { if (s.signedUrl && s.path) signedMap.set(s.path, s.signedUrl); });
+    }
+    return (msgs ?? []).map((m: any) => ({
+      ...m,
+      sender_name: nameMap.get(m.sender_id) ?? null,
+      images: (m.image_paths ?? []).map((p: string) => signedMap.get(p)).filter(Boolean),
+    }));
+  });
+
+export const sendSuggestionMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { suggestion_id: string; body?: string; image_paths?: string[] }) => {
+    if (!d?.suggestion_id) throw new Error("suggestion_id required");
+    const body = (d.body ?? "").trim();
+    const paths = Array.isArray(d.image_paths)
+      ? d.image_paths.map((p) => (p || "").trim()).filter(Boolean).slice(0, 8)
+      : [];
+    if (!body && paths.length === 0) throw new Error("Empty message");
+    if (body.length > 5000) throw new Error("Message too long");
+    return { suggestion_id: d.suggestion_id, body, image_paths: paths };
+  })
+  .handler(async ({ data, context }) => {
+    const { suggestion, isAdmin } = await assertSuggestionAccess(context, data.suggestion_id);
+    const { supabase, userId } = context;
+    const { error } = await supabase.from("suggestion_messages").insert({
+      suggestion_id: data.suggestion_id,
+      sender_id: userId,
+      is_admin: isAdmin,
+      body: data.body,
+      image_paths: data.image_paths,
+    });
+    if (error) throw new Error(error.message);
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // If admin replied, notify the owner. If user replied, notify all admins & mark suggestion unseen.
+    if (isAdmin) {
+      if (suggestion.user_id !== userId) {
+        await supabaseAdmin.from("notifications").insert({
+          user_id: suggestion.user_id,
+          type: "suggestion_update",
+          title: `رد جديد من الإدارة على اقتراحك • New admin reply on your suggestion`,
+          message: suggestion.title,
+          reference_id: suggestion.id,
+          reference_type: "suggestion",
+        });
+      }
+    } else {
+      await supabaseAdmin.from("suggestions").update({ seen_by_admin: false }).eq("id", suggestion.id);
+      const { data: prof } = await supabaseAdmin.from("profiles").select("name").eq("id", userId).maybeSingle();
+      const authorName = prof?.name || "مستخدم";
+      const { data: adminRoles } = await supabaseAdmin
+        .from("user_roles").select("user_id").in("role", ["admin", "super_admin"]);
+      const adminIds = Array.from(new Set((adminRoles ?? []).map((r: any) => r.user_id))).filter((id) => id !== userId);
+      if (adminIds.length) {
+        const rows = adminIds.map((uid) => ({
+          user_id: uid,
+          type: "suggestion",
+          title: `رد جديد من ${authorName} • New reply from ${authorName}`,
+          message: suggestion.title,
+          reference_id: suggestion.id,
+          reference_type: "suggestion",
+        }));
+        await supabaseAdmin.from("notifications").insert(rows);
+      }
+    }
+    return { ok: true };
   });
 
 export const signSuggestionImage = createServerFn({ method: "POST" })

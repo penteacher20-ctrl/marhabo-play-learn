@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { listAdmins, addAdminByEmail, removeAdmin } from "@/lib/admin.functions";
 import { useAuth as useAuthForIcon } from "@/lib/auth";
 import { getAllSuggestions, getSuggestionById, updateSuggestionStatus, deleteSuggestion, signSuggestionImage } from "@/lib/suggestions.functions";
+import { ChatModal } from "@/routes/suggestions";
 
 const isIconUrl = (v: string | null | undefined) => !!v && /^https?:\/\//i.test(v);
 
@@ -543,83 +544,54 @@ function SuggestionsAdmin({ ar }: { ar: boolean }) {
 function SuggestionDrawer({ ar, sugg, onClose, onSaved, onDelete }: {
   ar: boolean; sugg: Sugg; onClose: () => void; onSaved: () => void; onDelete: () => void;
 }) {
+  const { user } = useAuth();
   const [status, setStatus] = useState(sugg.status);
-  const [response, setResponse] = useState(sugg.admin_response ?? "");
-  const [imgUrl, setImgUrl] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (sugg.image_url) {
-      signSuggestionImage({ data: { path: sugg.image_url } }).then((r) => setImgUrl(r.url)).catch(() => setImgUrl(null));
-    }
-  }, [sugg.image_url]);
-
-  const save = async () => {
-    setBusy(true);
+  const saveStatus = async (next: string) => {
+    setStatus(next as any);
+    setSaving(true);
     try {
-      await updateSuggestionStatus({ data: { id: sugg.id, status, admin_response: response } });
-      toast.success(ar?"تم الحفظ":"Saved");
+      await updateSuggestionStatus({ data: { id: sugg.id, status: next, admin_response: null } });
+      toast.success(ar?"تم تحديث الحالة":"Status updated");
       onSaved();
     } catch (e: any) { toast.error(e.message); }
-    finally { setBusy(false); }
+    finally { setSaving(false); }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
-      <div className="bg-background rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-start justify-between gap-3 mb-4">
-          <div>
-            <h3 className="text-2xl font-display font-black">{sugg.title}</h3>
-            <p className="text-xs text-muted-foreground mt-1">
-              {sugg.author_name || "—"} • {new Date(sugg.created_at).toLocaleString(ar?"ar-EG":"en")}
-            </p>
-          </div>
-          <button onClick={onClose} className="text-2xl text-muted-foreground hover:text-foreground">✕</button>
-        </div>
+  if (!user) return null;
 
-        <p className="text-foreground/80 whitespace-pre-wrap mb-4">{sugg.description}</p>
-
-        {sugg.link_url && (
-          <a href={sugg.link_url} target="_blank" rel="noreferrer" className="block text-sm text-primary underline mb-4 break-all">
-            🔗 {sugg.link_url}
-          </a>
-        )}
-
-        {imgUrl && (
-          <img src={imgUrl} alt="" className="rounded-2xl max-h-72 object-contain mb-4 mx-auto" />
-        )}
-
-        <div className="grid gap-3">
-          <label className="block">
-            <span className="text-xs font-bold text-muted-foreground block mb-1">{ar?"الحالة":"Status"}</span>
-            <select value={status} onChange={(e) => setStatus(e.target.value as any)} className="input">
-              <option value="new">{statusLabel("new",ar)}</option>
-              <option value="reviewed">{statusLabel("reviewed",ar)}</option>
-              <option value="resolved">{statusLabel("resolved",ar)}</option>
-              <option value="rejected">{statusLabel("rejected",ar)}</option>
-            </select>
-          </label>
-          <label className="block">
-            <span className="text-xs font-bold text-muted-foreground block mb-1">{ar?"رد الإدارة":"Admin response"}</span>
-            <textarea value={response} onChange={(e) => setResponse(e.target.value)} rows={4} className="input" />
-          </label>
-        </div>
-
-        <div className="flex gap-2 mt-5 flex-wrap justify-end">
-          <button onClick={onDelete} className="px-4 py-2 rounded-full text-sm font-bold bg-destructive/10 text-destructive hover:bg-destructive/20">
-            {ar?"حذف":"Delete"}
-          </button>
-          <button onClick={onClose} className="px-4 py-2 rounded-full text-sm font-bold bg-secondary hover:bg-secondary/70">
-            {ar?"إلغاء":"Cancel"}
-          </button>
-          <button disabled={busy} onClick={save} className="bubble-btn text-white disabled:opacity-60" style={{ background: "var(--gradient-primary)" }}>
-            {busy ? "..." : ar?"حفظ":"Save"}
-          </button>
-        </div>
-      </div>
+  const header = (
+    <div className="flex items-center gap-2 flex-wrap">
+      <select
+        value={status}
+        disabled={saving}
+        onChange={(e) => saveStatus(e.target.value)}
+        className={`text-xs font-bold px-2 py-1.5 rounded-full border-2 outline-none ${STATUS_COLORS[status]}`}
+      >
+        <option value="new">{statusLabel("new",ar)}</option>
+        <option value="reviewed">{statusLabel("reviewed",ar)}</option>
+        <option value="resolved">{statusLabel("resolved",ar)}</option>
+        <option value="rejected">{statusLabel("rejected",ar)}</option>
+      </select>
+      <button onClick={onDelete} className="text-xs font-bold px-3 py-1.5 rounded-full bg-destructive/10 text-destructive hover:bg-destructive/20">
+        {ar?"حذف":"Delete"}
+      </button>
     </div>
   );
+
+  return (
+    <ChatModal
+      suggestionId={sugg.id}
+      onClose={onClose}
+      ar={ar}
+      selfId={user.id}
+      isAdmin={true}
+      headerExtra={header}
+    />
+  );
 }
+
 
 async function uploadSiteAsset(file: File, userId: string, kind: "logo" | "favicon"): Promise<string> {
   const ext = (file.name.split(".").pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "");
