@@ -29,7 +29,7 @@ export function Navbar() {
         </nav>
 
         <div className="flex items-center gap-2">
-          {isAdmin && <AdminNotifications />}
+          {user && <AdminNotifications />}
           <Link
             to="/settings"
             className="w-9 h-9 grid place-items-center rounded-full bg-secondary hover:bg-secondary/70 transition"
