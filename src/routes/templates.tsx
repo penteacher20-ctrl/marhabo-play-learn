@@ -70,7 +70,11 @@ function TemplatesPage() {
             return (
               <div key={t.id} className="card-pop p-6 relative overflow-hidden">
                 <div className="absolute -top-12 -end-12 w-36 h-36 rounded-full opacity-20" style={{ background: color }} />
-                <div className="text-6xl mb-3">{t.icon}</div>
+                {t.icon && /^https?:\/\//i.test(t.icon) ? (
+                  <img src={t.icon} alt="" className="w-16 h-16 object-cover rounded-2xl mb-3 relative" />
+                ) : (
+                  <div className="text-6xl mb-3">{t.icon}</div>
+                )}
                 {isExternal && (
                   <span className="absolute top-3 start-3 text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
                     🔗 {ar ? "خارجي" : "External"}
