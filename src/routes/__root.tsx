@@ -57,10 +57,12 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   return (
     <AuthProvider>
-      <I18nProvider>
-        <Outlet />
-        <Toaster position="top-center" richColors />
-      </I18nProvider>
+      <SiteSettingsProvider>
+        <I18nProvider>
+          <Outlet />
+          <Toaster position="top-center" richColors />
+        </I18nProvider>
+      </SiteSettingsProvider>
     </AuthProvider>
   );
 }
