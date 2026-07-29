@@ -51,8 +51,20 @@ function EditGame() {
   const [pairs, setPairs] = useState<Pair[]>([]);
   const [towerQs, setTowerQs] = useState<TowerQuestion[]>([]);
 
+  // Embed
+  const [embedCode, setEmbedCode] = useState("");
+  const [embedSize, setEmbedSize] = useState<"responsive" | "fixed">("responsive");
+  const [embedWidth, setEmbedWidth] = useState("100%");
+  const [embedHeight, setEmbedHeight] = useState("600");
+  const [embedAspect, setEmbedAspect] = useState("16/10");
+
+  // HTML replacement
+  const [newHtmlFile, setNewHtmlFile] = useState<File | null>(null);
+
   const slug = gameType.startsWith("template:") ? gameType.slice("template:".length) : "";
   const isPuzzle = slug === "puzzle";
+  const isEmbed = gameType === "embed";
+  const isHtml = gameType === "html" || gameType === "zip";
   const editableContent = ["quiz", "blanks", "wheel", "tower"].includes(slug) || (slug === "matching" && pairs.length > 0);
 
   useEffect(() => {
@@ -66,10 +78,26 @@ function EditGame() {
       setDesc(g.description ?? "");
       setIsPublic(g.is_public);
       setThumbUrl(g.thumbnail_url);
-      setGameType(g.type ?? "");
-      setFileUrl(g.file_url ?? null);
       const gtype: string = g.type ?? "";
-      if (gtype.startsWith("template:") && g.file_url) {
+      setGameType(gtype);
+      setFileUrl(g.file_url ?? null);
+      if (gtype === "embed" && g.file_url) {
+        setEmbedCode(g.file_url);
+        try {
+          const u = new URL(g.file_url);
+          const hash = u.hash.startsWith("#lv=") ? u.hash.slice(4) : "";
+          const p = new URLSearchParams(hash);
+          const sz = p.get("size");
+          if (sz === "fixed") {
+            setEmbedSize("fixed");
+            setEmbedWidth(p.get("w") ?? "100%");
+            setEmbedHeight((p.get("h") ?? "600").replace(/px$/, ""));
+          } else {
+            setEmbedSize("responsive");
+            setEmbedAspect(p.get("ar") ?? "16/10");
+          }
+        } catch { /* ignore */ }
+      } else if (gtype.startsWith("template:") && g.file_url) {
         try {
           const res = await fetch(g.file_url);
           const txt = await res.text();
@@ -153,6 +181,32 @@ function EditGame() {
         const qs = towerQs.filter(q => (q.question_ar.trim() || q.question_en.trim()) && q.answers_ar.some(a => a.trim()));
         if (!qs.length) { toast.error("أضف سؤالاً واحداً على الأقل"); setBusy(false); return; }
         file_url = await uploadHtml(generateTower({ title, questions: qs }), "tower");
+      } else if (isEmbed) {
+        const raw = embedCode.trim();
+        if (!raw) { toast.error("الصق رابط أو كود التضمين"); setBusy(false); return; }
+        const m = raw.match(/<iframe[^>]*\ssrc\s*=\s*["']([^"']+)["']/i);
+        const baseUrl = m ? m[1] : raw;
+        let u: URL;
+        try { u = new URL(baseUrl); } catch { toast.error("رابط غير صالح"); setBusy(false); return; }
+        if (u.protocol !== "https:") { toast.error("يجب أن يبدأ الرابط بـ https"); setBusy(false); return; }
+        const params = new URLSearchParams();
+        if (embedSize === "responsive") {
+          params.set("size", "responsive");
+          if (embedAspect) params.set("ar", embedAspect);
+        } else {
+          params.set("size", "fixed");
+          params.set("w", embedWidth || "100%");
+          params.set("h", /^\d+$/.test(embedHeight) ? `${embedHeight}px` : (embedHeight || "600px"));
+        }
+        u.hash = `lv=${params.toString()}`;
+        file_url = u.toString();
+      } else if (isHtml && newHtmlFile) {
+        if (!/\.html?$/i.test(newHtmlFile.name)) { toast.error("اختر ملف .html"); setBusy(false); return; }
+        const safeName = newHtmlFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const path = `${user.id}/${Date.now()}-${safeName}`;
+        const { error: upErr } = await supabase.storage.from("game-files").upload(path, newHtmlFile, { contentType: "text/html" });
+        if (upErr) throw upErr;
+        file_url = supabase.storage.from("game-files").getPublicUrl(path).data.publicUrl;
       }
 
       const { error } = await supabase.from("games").update({ title, description: desc, is_public: isPublic, thumbnail_url, file_url }).eq("id", gameId);
@@ -216,6 +270,38 @@ function EditGame() {
               {slug === "wheel" && <WheelBuilder items={wheelItems} setItems={setWheelItems} />}
               {slug === "matching" && pairs.length > 0 && <PairsBuilder pairs={pairs} setPairs={setPairs} />}
               {slug === "tower" && <TowerBuilder qs={towerQs} setQs={setTowerQs} />}
+            </div>
+          )}
+
+          {contentLoaded && isEmbed && (
+            <div className="rounded-2xl border-2 border-dashed border-primary/40 p-4 space-y-3 bg-primary/5">
+              <div className="font-bold text-primary">🔗 كود التضمين</div>
+              <Field label="رابط أو كود <iframe>">
+                <textarea dir="ltr" value={embedCode} onChange={(e) => setEmbedCode(e.target.value)} rows={3} className="input font-mono text-xs" placeholder="https://... أو <iframe src=...>" />
+              </Field>
+              <div className="flex gap-2 flex-wrap">
+                <button type="button" onClick={() => setEmbedSize("responsive")} className={`px-4 py-1.5 rounded-full text-sm font-bold border-2 ${embedSize === "responsive" ? "bg-primary text-white border-primary" : "border-border"}`}>متجاوب</button>
+                <button type="button" onClick={() => setEmbedSize("fixed")} className={`px-4 py-1.5 rounded-full text-sm font-bold border-2 ${embedSize === "fixed" ? "bg-primary text-white border-primary" : "border-border"}`}>ثابت</button>
+              </div>
+              {embedSize === "responsive" ? (
+                <Field label="نسبة العرض (aspect ratio)">
+                  <input value={embedAspect} onChange={(e) => setEmbedAspect(e.target.value)} placeholder="16/10" className="input" />
+                </Field>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="العرض"><input value={embedWidth} onChange={(e) => setEmbedWidth(e.target.value)} className="input" placeholder="100%" /></Field>
+                  <Field label="الارتفاع (px)"><input value={embedHeight} onChange={(e) => setEmbedHeight(e.target.value)} className="input" placeholder="600" /></Field>
+                </div>
+              )}
+            </div>
+          )}
+
+          {contentLoaded && isHtml && (
+            <div className="rounded-2xl border-2 border-dashed border-primary/40 p-4 space-y-2 bg-primary/5">
+              <div className="font-bold text-primary">📄 ملف اللعبة (HTML)</div>
+              {fileUrl && <a href={fileUrl} target="_blank" rel="noreferrer" className="text-xs text-primary underline block break-all">الملف الحالي</a>}
+              <input type="file" accept=".html,.htm,text/html" onChange={(e) => setNewHtmlFile(e.target.files?.[0] ?? null)} className="text-sm" />
+              <p className="text-xs text-muted-foreground">اختياري: ارفع ملف HTML جديد لاستبدال محتوى اللعبة.</p>
             </div>
           )}
 
