@@ -181,6 +181,32 @@ function EditGame() {
         const qs = towerQs.filter(q => (q.question_ar.trim() || q.question_en.trim()) && q.answers_ar.some(a => a.trim()));
         if (!qs.length) { toast.error("أضف سؤالاً واحداً على الأقل"); setBusy(false); return; }
         file_url = await uploadHtml(generateTower({ title, questions: qs }), "tower");
+      } else if (isEmbed) {
+        const raw = embedCode.trim();
+        if (!raw) { toast.error("الصق رابط أو كود التضمين"); setBusy(false); return; }
+        const m = raw.match(/<iframe[^>]*\ssrc\s*=\s*["']([^"']+)["']/i);
+        const baseUrl = m ? m[1] : raw;
+        let u: URL;
+        try { u = new URL(baseUrl); } catch { toast.error("رابط غير صالح"); setBusy(false); return; }
+        if (u.protocol !== "https:") { toast.error("يجب أن يبدأ الرابط بـ https"); setBusy(false); return; }
+        const params = new URLSearchParams();
+        if (embedSize === "responsive") {
+          params.set("size", "responsive");
+          if (embedAspect) params.set("ar", embedAspect);
+        } else {
+          params.set("size", "fixed");
+          params.set("w", embedWidth || "100%");
+          params.set("h", /^\d+$/.test(embedHeight) ? `${embedHeight}px` : (embedHeight || "600px"));
+        }
+        u.hash = `lv=${params.toString()}`;
+        file_url = u.toString();
+      } else if (isHtml && newHtmlFile) {
+        if (!/\.html?$/i.test(newHtmlFile.name)) { toast.error("اختر ملف .html"); setBusy(false); return; }
+        const safeName = newHtmlFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const path = `${user.id}/${Date.now()}-${safeName}`;
+        const { error: upErr } = await supabase.storage.from("game-files").upload(path, newHtmlFile, { contentType: "text/html" });
+        if (upErr) throw upErr;
+        file_url = supabase.storage.from("game-files").getPublicUrl(path).data.publicUrl;
       }
 
       const { error } = await supabase.from("games").update({ title, description: desc, is_public: isPublic, thumbnail_url, file_url }).eq("id", gameId);
