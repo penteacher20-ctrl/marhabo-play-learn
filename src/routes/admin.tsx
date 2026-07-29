@@ -122,6 +122,9 @@ function AdminPage() {
             <TabBtn active={tab === "suggestions"} onClick={() => setTab("suggestions")}>
               {ar ? "الاقتراحات" : "Suggestions"}
             </TabBtn>
+            <TabBtn active={tab === "site"} onClick={() => setTab("site")}>
+              {ar ? "هوية الموقع" : "Site"}
+            </TabBtn>
             {isSuperAdmin && (
               <TabBtn active={tab === "users"} onClick={() => setTab("users")}>
                 {ar ? "الأدمنز" : "Admins"}
@@ -130,7 +133,7 @@ function AdminPage() {
           </div>
         </div>
 
-        {tab === "templates" ? <TemplatesAdmin ar={ar} /> : tab === "suggestions" ? <SuggestionsAdmin ar={ar} /> : <AdminsAdmin ar={ar} />}
+        {tab === "templates" ? <TemplatesAdmin ar={ar} /> : tab === "suggestions" ? <SuggestionsAdmin ar={ar} /> : tab === "site" ? <SiteAdmin ar={ar} /> : <AdminsAdmin ar={ar} />}
       </main>
       <Footer />
     </div>
