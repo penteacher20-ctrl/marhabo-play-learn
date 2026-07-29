@@ -162,12 +162,7 @@ function TemplatesAdmin({ ar }: { ar: boolean }) {
 
       {rows.map((t) => (
         <div key={t.id} className="card-pop p-5 grid md:grid-cols-[80px_1fr_auto] gap-4 items-start">
-          <input
-            defaultValue={t.icon ?? ""}
-            onBlur={(e) => e.target.value !== (t.icon ?? "") && save(t.id, { icon: e.target.value })}
-            className="input text-4xl text-center h-20"
-            maxLength={4}
-          />
+          <IconPicker value={t.icon ?? ""} onChange={(v) => save(t.id, { icon: v })} size="lg" />
           <div className="grid sm:grid-cols-2 gap-3">
             <label className="block">
               <span className="text-xs font-bold text-muted-foreground">{ar ? "الاسم عربي" : "Name AR"}</span>
