@@ -6,7 +6,14 @@ import { Footer } from "@/components/Footer";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { generatePuzzle } from "@/lib/templates";
+import {
+  generatePuzzle, generateQuiz, generateBlanks, generateWheel, generateMatching, generateTower,
+  extractEmbeddedConfig, type TowerQuestion,
+} from "@/lib/templates";
+import {
+  Field, QuizBuilder, BlanksBuilder, WheelBuilder, PairsBuilder, TowerBuilder,
+  type QuizQ, type BlanksItem, type Pair,
+} from "@/components/TemplateBuilders";
 
 export const Route = createFileRoute("/games/$gameId/edit")({ component: EditGame });
 
@@ -30,12 +37,23 @@ function EditGame() {
   const [notFound, setNotFound] = useState(false);
   const [gameType, setGameType] = useState<string>("");
   const [fileUrl, setFileUrl] = useState<string | null>(null);
-  // Puzzle-specific
+  const [contentLoaded, setContentLoaded] = useState(false);
+
+  // Puzzle
   const [puzzleImageUrl, setPuzzleImageUrl] = useState<string | null>(null);
   const [puzzleGrid, setPuzzleGrid] = useState<number>(4);
   const [newPuzzleImage, setNewPuzzleImage] = useState<File | null>(null);
 
-  const isPuzzle = gameType.startsWith("template:puzzle");
+  // Editable content per template
+  const [quizQs, setQuizQs] = useState<QuizQ[]>([]);
+  const [blanksList, setBlanksList] = useState<BlanksItem[]>([]);
+  const [wheelItems, setWheelItems] = useState<string[]>([]);
+  const [pairs, setPairs] = useState<Pair[]>([]);
+  const [towerQs, setTowerQs] = useState<TowerQuestion[]>([]);
+
+  const slug = gameType.startsWith("template:") ? gameType.slice("template:".length) : "";
+  const isPuzzle = slug === "puzzle";
+  const editableContent = ["quiz", "blanks", "wheel", "tower"].includes(slug) || (slug === "matching" && pairs.length > 0);
 
   useEffect(() => {
     if (!loading && !user) { navigate({ to: "/auth" }); return; }
@@ -50,15 +68,31 @@ function EditGame() {
       setThumbUrl(g.thumbnail_url);
       setGameType(g.type ?? "");
       setFileUrl(g.file_url ?? null);
-      if ((g.type ?? "").startsWith("template:puzzle") && g.file_url) {
+      const gtype: string = g.type ?? "";
+      if (gtype.startsWith("template:") && g.file_url) {
         try {
           const res = await fetch(g.file_url);
           const txt = await res.text();
-          const meta = extractPuzzleMeta(txt);
-          setPuzzleImageUrl(meta.src);
-          setPuzzleGrid(meta.grid);
+          const embedded = extractEmbeddedConfig(txt);
+          if (embedded) {
+            const c = embedded.config;
+            if (embedded.slug === "quiz" && Array.isArray(c.questions)) setQuizQs(c.questions);
+            else if (embedded.slug === "blanks" && Array.isArray(c.sentences)) setBlanksList(c.sentences);
+            else if (embedded.slug === "wheel" && Array.isArray(c.items)) setWheelItems(c.items);
+            else if (embedded.slug === "matching" && Array.isArray(c.pairs)) setPairs(c.pairs);
+            else if (embedded.slug === "tower" && Array.isArray(c.questions)) setTowerQs(c.questions);
+            else if (embedded.slug === "puzzle") {
+              setPuzzleImageUrl(c.imageUrl ?? null);
+              setPuzzleGrid(c.rows ?? 4);
+            }
+          } else if (gtype.startsWith("template:puzzle")) {
+            const meta = extractPuzzleMeta(txt);
+            setPuzzleImageUrl(meta.src);
+            setPuzzleGrid(meta.grid);
+          }
         } catch { /* ignore */ }
       }
+      setContentLoaded(true);
     });
   }, [gameId, user, loading, navigate]);
 
@@ -66,6 +100,14 @@ function EditGame() {
     const ext = file.name.split(".").pop() || "png";
     const path = `${user!.id}/${Date.now()}-asset.${ext}`;
     const { error } = await supabase.storage.from("game-files").upload(path, file, { contentType: file.type });
+    if (error) throw error;
+    return supabase.storage.from("game-files").getPublicUrl(path).data.publicUrl;
+  };
+
+  const uploadHtml = async (html: string, suffix: string): Promise<string> => {
+    const path = `${user!.id}/${Date.now()}-${suffix}.html`;
+    const blob = new Blob([html], { type: "text/html" });
+    const { error } = await supabase.storage.from("game-files").upload(path, blob, { contentType: "text/html" });
     if (error) throw error;
     return supabase.storage.from("game-files").getPublicUrl(path).data.publicUrl;
   };
@@ -84,20 +126,33 @@ function EditGame() {
       }
 
       let file_url = fileUrl;
-      // Regenerate puzzle HTML if image changed, grid changed, or title changed (so iframe header matches)
+
       if (isPuzzle) {
         let imgUrl = puzzleImageUrl;
-        if (newPuzzleImage) {
-          imgUrl = await uploadAsset(newPuzzleImage);
-        }
+        if (newPuzzleImage) imgUrl = await uploadAsset(newPuzzleImage);
         if (!imgUrl) { toast.error("لا توجد صورة للبازل"); setBusy(false); return; }
-        const html = generatePuzzle({ title, imageUrl: imgUrl, rows: puzzleGrid, cols: puzzleGrid });
-        const path = `${user.id}/${Date.now()}-puzzle.html`;
-        const blob = new Blob([html], { type: "text/html" });
-        const { error: upErr } = await supabase.storage.from("game-files").upload(path, blob, { contentType: "text/html" });
-        if (upErr) throw upErr;
-        file_url = supabase.storage.from("game-files").getPublicUrl(path).data.publicUrl;
+        file_url = await uploadHtml(generatePuzzle({ title, imageUrl: imgUrl, rows: puzzleGrid, cols: puzzleGrid }), "puzzle");
         setPuzzleImageUrl(imgUrl);
+      } else if (slug === "quiz") {
+        const qs = quizQs.filter(q => q.q.trim() && q.options.some(o => o.trim()));
+        if (!qs.length) { toast.error("أضف سؤالاً واحداً على الأقل"); setBusy(false); return; }
+        file_url = await uploadHtml(generateQuiz({ title, questions: qs.map(q => ({ q: q.q, options: q.options.filter(o => o.trim()), correct: Math.min(q.correct, q.options.filter(o => o.trim()).length - 1) })) }), "quiz");
+      } else if (slug === "blanks") {
+        const ss = blanksList.filter(b => b.text.includes("___") && b.answers.some(a => a.trim()));
+        if (!ss.length) { toast.error("أضف جملة بفراغات ___ مع الإجابات"); setBusy(false); return; }
+        file_url = await uploadHtml(generateBlanks({ title, sentences: ss }), "blanks");
+      } else if (slug === "wheel") {
+        const items = wheelItems.map(s => s.trim()).filter(Boolean);
+        if (items.length < 2) { toast.error("أضف عنصرين على الأقل"); setBusy(false); return; }
+        file_url = await uploadHtml(generateWheel({ title, items }), "wheel");
+      } else if (slug === "matching" && pairs.length > 0) {
+        const filtered = pairs.filter(p => p.a.trim() && p.b.trim());
+        if (filtered.length < 2) { toast.error("أضف زوجين على الأقل"); setBusy(false); return; }
+        file_url = await uploadHtml(generateMatching({ title, pairs: filtered }), "matching");
+      } else if (slug === "tower") {
+        const qs = towerQs.filter(q => (q.question_ar.trim() || q.question_en.trim()) && q.answers_ar.some(a => a.trim()));
+        if (!qs.length) { toast.error("أضف سؤالاً واحداً على الأقل"); setBusy(false); return; }
+        file_url = await uploadHtml(generateTower({ title, questions: qs }), "tower");
       }
 
       const { error } = await supabase.from("games").update({ title, description: desc, is_public: isPublic, thumbnail_url, file_url }).eq("id", gameId);
@@ -117,11 +172,19 @@ function EditGame() {
 
   if (notFound) return <Wrapper><div className="card-pop p-10 text-center max-w-md mx-auto"><p>اللعبة غير موجودة أو ليست لك.</p></div></Wrapper>;
 
+  const canEditContent = contentLoaded && (
+    (slug === "quiz" && quizQs.length > 0) ||
+    (slug === "blanks" && blanksList.length > 0) ||
+    (slug === "wheel" && wheelItems.length > 0) ||
+    (slug === "matching" && pairs.length > 0) ||
+    (slug === "tower" && towerQs.length > 0)
+  );
+
   return (
     <Wrapper>
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-3xl mx-auto">
         <h1 className="text-4xl font-display font-black text-center mb-8">تعديل اللعبة</h1>
-        <div className="card-pop p-8 space-y-5">
+        <div className="card-pop p-6 md:p-8 space-y-5">
           <Field label={tr("game_title")}><input value={title} onChange={(e) => setTitle(e.target.value)} className="input" /></Field>
           <Field label={tr("game_desc")}><textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} className="input" /></Field>
           <Field label={tr("thumbnail")}>
@@ -134,24 +197,32 @@ function EditGame() {
               <div className="font-bold text-primary">🧩 إعدادات البازل</div>
               <Field label="صورة البازل الحالية">
                 {(newPuzzleImage || puzzleImageUrl) && (
-                  <img
-                    src={newPuzzleImage ? URL.createObjectURL(newPuzzleImage) : puzzleImageUrl!}
-                    alt="puzzle"
-                    className="w-40 h-40 object-cover rounded-xl mb-2 border-2 border-border"
-                  />
+                  <img src={newPuzzleImage ? URL.createObjectURL(newPuzzleImage) : puzzleImageUrl!} alt="puzzle" className="w-40 h-40 object-cover rounded-xl mb-2 border-2 border-border" />
                 )}
                 <input type="file" accept="image/*" onChange={(e) => setNewPuzzleImage(e.target.files?.[0] ?? null)} className="text-sm" />
-                <p className="text-xs text-muted-foreground mt-1">عند الحفظ ستُولَّد القطع تلقائياً من الصورة الجديدة، وسيراها الطلاب فوراً.</p>
+                <p className="text-xs text-muted-foreground mt-1">عند الحفظ ستُولَّد القطع تلقائياً من الصورة الجديدة.</p>
               </Field>
-              <Field label={`صعوبة الشبكة الافتراضية: ${puzzleGrid}×${puzzleGrid}`}>
-                <input
-                  type="range" min={3} max={6} step={1}
-                  value={puzzleGrid}
-                  onChange={(e) => setPuzzleGrid(parseInt(e.target.value, 10))}
-                  className="w-full"
-                />
+              <Field label={`صعوبة الشبكة: ${puzzleGrid}×${puzzleGrid}`}>
+                <input type="range" min={3} max={6} step={1} value={puzzleGrid} onChange={(e) => setPuzzleGrid(parseInt(e.target.value, 10))} className="w-full" />
               </Field>
             </div>
+          )}
+
+          {canEditContent && (
+            <div className="rounded-2xl border-2 border-dashed border-primary/40 p-4 space-y-3 bg-primary/5">
+              <div className="font-bold text-primary">✏️ محتوى اللعبة</div>
+              {slug === "quiz" && <QuizBuilder qs={quizQs} setQs={setQuizQs} />}
+              {slug === "blanks" && <BlanksBuilder list={blanksList} setList={setBlanksList} />}
+              {slug === "wheel" && <WheelBuilder items={wheelItems} setItems={setWheelItems} />}
+              {slug === "matching" && pairs.length > 0 && <PairsBuilder pairs={pairs} setPairs={setPairs} />}
+              {slug === "tower" && <TowerBuilder qs={towerQs} setQs={setTowerQs} />}
+            </div>
+          )}
+
+          {contentLoaded && slug && !canEditContent && !isPuzzle && (
+            <p className="text-sm text-muted-foreground bg-secondary/40 rounded-xl p-3">
+              لا يمكن تعديل محتوى هذا النوع من الألعاب مباشرة هنا. يمكنك تعديل العنوان والوصف والصورة.
+            </p>
           )}
 
           <div className="flex items-center justify-between bg-secondary/50 rounded-2xl px-4 py-3">
@@ -171,10 +242,6 @@ function EditGame() {
       <style>{`.input{width:100%;padding:.75rem 1rem;border-radius:1rem;background:#fff;border:2px solid var(--color-border);font:inherit;outline:none}.input:focus{border-color:var(--color-primary)}`}</style>
     </Wrapper>
   );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <label className="block"><span className="block text-sm font-bold mb-1.5">{label}</span>{children}</label>;
 }
 
 function Wrapper({ children }: { children: React.ReactNode }) {
