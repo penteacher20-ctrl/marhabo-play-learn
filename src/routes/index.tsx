@@ -92,6 +92,23 @@ function Index() {
         </div>
       </section>
 
+      {/* COMMUNITY GAMES */}
+      {communityGames.length > 0 && (
+        <section className="container mx-auto px-4 py-16">
+          <div className="text-center mb-10">
+            <h2 className="text-4xl md:text-5xl font-display font-black">{tr("community_title")}</h2>
+            <p className="mt-3 text-muted-foreground text-lg">{tr("community_sub")}</p>
+          </div>
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+            {communityGames.map((g, i) => <CommunityCard key={g.id} g={g} idx={i} />)}
+          </div>
+          <div className="text-center mt-8">
+            <Link to="/explore" className="bubble-btn text-white" style={{ background: "var(--gradient-fresh)" }}>{tr("view_all")} →</Link>
+          </div>
+        </section>
+      )}
+
+
       {/* HOW */}
       <section className="container mx-auto px-4 py-16">
         <h2 className="text-4xl md:text-5xl font-display font-black text-center mb-12">{tr("how_title")}</h2>
