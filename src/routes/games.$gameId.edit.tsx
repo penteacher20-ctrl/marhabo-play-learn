@@ -78,6 +78,7 @@ function EditGame() {
       setDesc(g.description ?? "");
       setIsPublic(g.is_public);
       setThumbUrl(g.thumbnail_url);
+      const gtype: string = g.type ?? "";
       setGameType(gtype);
       setFileUrl(g.file_url ?? null);
       if (gtype === "embed" && g.file_url) {
