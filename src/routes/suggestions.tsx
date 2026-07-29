@@ -61,6 +61,20 @@ function SuggestionsPage() {
   };
   useEffect(() => { if (user) load(); }, [user]);
 
+  // Realtime: reload my suggestions when any of my rows change
+  useEffect(() => {
+    if (!user) return;
+    const ch = supabase
+      .channel(`my-suggs-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "suggestions", filter: `user_id=eq.${user.id}` },
+        () => load()
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [user?.id]);
+
   const pickFile = (f: File | null) => {
     setFile(f);
     if (preview) URL.revokeObjectURL(preview);

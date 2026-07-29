@@ -82,7 +82,11 @@ export function AdminNotifications() {
     }
     setOpen(false);
     if (n.reference_type === "suggestion") {
-      navigate({ to: "/admin", search: { tab: "suggestions", sid: n.reference_id ?? undefined } as any });
+      if (n.type === "suggestion_update") {
+        navigate({ to: "/suggestions" });
+      } else {
+        navigate({ to: "/admin" });
+      }
     }
   };
 

@@ -168,11 +168,41 @@ export const updateSuggestionStatus = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: prev } = await supabaseAdmin
+      .from("suggestions")
+      .select("user_id,title,status,admin_response")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!prev) throw new Error("Not found");
     const { error } = await context.supabase
       .from("suggestions")
       .update({ status: data.status, admin_response: data.admin_response })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
+
+    const statusChanged = prev.status !== data.status;
+    const responseChanged = (prev.admin_response ?? null) !== (data.admin_response ?? null) && !!data.admin_response;
+    if ((statusChanged || responseChanged) && prev.user_id !== context.userId) {
+      const statusMapAr: Record<string, string> = { new: "جديد", reviewed: "قيد المراجعة", resolved: "تم", rejected: "مرفوض" };
+      const statusMapEn: Record<string, string> = { new: "New", reviewed: "Reviewed", resolved: "Resolved", rejected: "Rejected" };
+      let title = "";
+      if (statusChanged && responseChanged) {
+        title = `تحديث على اقتراحك: ${statusMapAr[data.status]} • Update on your suggestion: ${statusMapEn[data.status]}`;
+      } else if (statusChanged) {
+        title = `تغيّرت حالة اقتراحك إلى ${statusMapAr[data.status]} • Status changed to ${statusMapEn[data.status]}`;
+      } else {
+        title = `رد جديد من الإدارة على اقتراحك • New admin response on your suggestion`;
+      }
+      await supabaseAdmin.from("notifications").insert({
+        user_id: prev.user_id,
+        type: "suggestion_update",
+        title,
+        message: prev.title,
+        reference_id: data.id,
+        reference_type: "suggestion",
+      });
+    }
     return { ok: true };
   });
 
