@@ -9,6 +9,7 @@ import { useRoles } from "@/lib/roles";
 import { supabase } from "@/integrations/supabase/client";
 import { listAdmins, addAdminByEmail, removeAdmin } from "@/lib/admin.functions";
 import { useAuth as useAuthForIcon } from "@/lib/auth";
+import { getAllSuggestions, getSuggestionById, updateSuggestionStatus, deleteSuggestion, signSuggestionImage } from "@/lib/suggestions.functions";
 
 const isIconUrl = (v: string | null | undefined) => !!v && /^https?:\/\//i.test(v);
 
@@ -83,7 +84,7 @@ function AdminPage() {
   const { user, loading: authLoading } = useAuth();
   const { isAdmin, isSuperAdmin, loading: rolesLoading } = useRoles();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<"templates" | "users">("templates");
+  const [tab, setTab] = useState<"templates" | "users" | "suggestions">("templates");
   const ar = lang === "ar";
 
   useEffect(() => {
@@ -114,9 +115,12 @@ function AdminPage() {
               {isSuperAdmin ? (ar ? "(سوبر أدمن)" : "(Super Admin)") : (ar ? "(أدمن)" : "(Admin)")}
             </span>
           </h1>
-          <div className="flex gap-2 p-1.5 bg-secondary/70 rounded-full">
+          <div className="flex gap-2 p-1.5 bg-secondary/70 rounded-full flex-wrap">
             <TabBtn active={tab === "templates"} onClick={() => setTab("templates")}>
               {ar ? "القوالب" : "Templates"}
+            </TabBtn>
+            <TabBtn active={tab === "suggestions"} onClick={() => setTab("suggestions")}>
+              {ar ? "الاقتراحات" : "Suggestions"}
             </TabBtn>
             {isSuperAdmin && (
               <TabBtn active={tab === "users"} onClick={() => setTab("users")}>
@@ -126,7 +130,7 @@ function AdminPage() {
           </div>
         </div>
 
-        {tab === "templates" ? <TemplatesAdmin ar={ar} /> : <AdminsAdmin ar={ar} />}
+        {tab === "templates" ? <TemplatesAdmin ar={ar} /> : tab === "suggestions" ? <SuggestionsAdmin ar={ar} /> : <AdminsAdmin ar={ar} />}
       </main>
       <Footer />
     </div>
@@ -361,3 +365,207 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return <label className="block"><span className="text-xs font-bold text-muted-foreground block mb-1">{label}</span>{children}</label>;
 }
 
+
+// ============ Suggestions admin ============
+
+interface Sugg {
+  id: string; user_id: string; title: string; description: string;
+  image_url: string | null; link_url: string | null;
+  status: "new" | "reviewed" | "resolved" | "rejected";
+  admin_response: string | null; seen_by_admin: boolean;
+  created_at: string; author_name?: string | null;
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  new: "bg-blue-100 text-blue-700",
+  reviewed: "bg-amber-100 text-amber-700",
+  resolved: "bg-emerald-100 text-emerald-700",
+  rejected: "bg-rose-100 text-rose-700",
+};
+
+function statusLabel(s: string, ar: boolean) {
+  const map: any = { new: ["جديد","New"], reviewed:["قيد المراجعة","Reviewed"], resolved:["تم","Resolved"], rejected:["مرفوض","Rejected"] };
+  return (map[s] ?? [s,s])[ar?0:1];
+}
+
+function SuggestionsAdmin({ ar }: { ar: boolean }) {
+  const [rows, setRows] = useState<Sugg[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [status, setStatus] = useState<string>("");
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<Sugg | null>(null);
+  const [loading, setLoading] = useState(false);
+  const limit = 20;
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const r = await getAllSuggestions({ data: { status: status || undefined, search: search || undefined, page, limit } });
+      setRows(r.rows as Sugg[]);
+      setTotal(r.total);
+    } catch (e: any) { toast.error(e.message); }
+    finally { setLoading(false); }
+  };
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [page, status]);
+
+  const open = async (id: string) => {
+    try {
+      const r = await getSuggestionById({ data: { id } });
+      setSelected(r as Sugg);
+      // update local list seen state
+      setRows((prev) => prev.map((x) => x.id === id ? { ...x, seen_by_admin: true } : x));
+    } catch (e: any) { toast.error(e.message); }
+  };
+
+  const del = async (id: string) => {
+    if (!confirm(ar ? "حذف الاقتراح؟" : "Delete suggestion?")) return;
+    try {
+      await deleteSuggestion({ data: { id } });
+      toast.success(ar ? "تم الحذف" : "Deleted");
+      setSelected(null);
+      load();
+    } catch (e: any) { toast.error(e.message); }
+  };
+
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+
+  return (
+    <div className="space-y-4">
+      <div className="card-pop p-4 flex gap-3 flex-wrap items-center">
+        <form onSubmit={(e) => { e.preventDefault(); setPage(1); load(); }} className="flex gap-2 flex-1 min-w-[240px]">
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={ar?"بحث...":"Search..."} className="input flex-1" />
+          <button className="bubble-btn text-white" style={{ background: "var(--gradient-primary)" }}>{ar?"بحث":"Search"}</button>
+        </form>
+        <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="input max-w-[180px]">
+          <option value="">{ar?"كل الحالات":"All statuses"}</option>
+          <option value="new">{statusLabel("new",ar)}</option>
+          <option value="reviewed">{statusLabel("reviewed",ar)}</option>
+          <option value="resolved">{statusLabel("resolved",ar)}</option>
+          <option value="rejected">{statusLabel("rejected",ar)}</option>
+        </select>
+      </div>
+
+      <div className="card-pop overflow-hidden">
+        {loading && <div className="p-6 text-center text-muted-foreground text-sm">...</div>}
+        {!loading && rows.length === 0 && (
+          <div className="p-8 text-center text-muted-foreground">{ar?"لا توجد اقتراحات":"No suggestions"}</div>
+        )}
+        <div className="divide-y divide-border">
+          {rows.map((r) => (
+            <div key={r.id} className="p-4 flex items-center gap-3 flex-wrap hover:bg-secondary/30 transition">
+              {!r.seen_by_admin && (
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-primary text-white">{ar?"جديد":"NEW"}</span>
+              )}
+              <div className="flex-1 min-w-[200px]">
+                <div className="font-bold">{r.title}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  {r.author_name || "—"} • {new Date(r.created_at).toLocaleDateString(ar?"ar-EG":"en")}
+                </div>
+              </div>
+              <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${STATUS_COLORS[r.status]}`}>{statusLabel(r.status, ar)}</span>
+              <button onClick={() => open(r.id)} className="px-3 py-1.5 rounded-full text-xs font-bold bg-primary/10 text-primary hover:bg-primary/20">
+                {ar?"تفاصيل":"Details"}
+              </button>
+              <button onClick={() => del(r.id)} className="px-3 py-1.5 rounded-full text-xs font-bold bg-destructive/10 text-destructive hover:bg-destructive/20">
+                {ar?"حذف":"Delete"}
+              </button>
+            </div>
+          ))}
+        </div>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 p-4 border-t border-border">
+            <button disabled={page <= 1} onClick={() => setPage(page - 1)} className="px-3 py-1 rounded-full bg-secondary text-sm disabled:opacity-40">‹</button>
+            <span className="text-sm">{page} / {totalPages}</span>
+            <button disabled={page >= totalPages} onClick={() => setPage(page + 1)} className="px-3 py-1 rounded-full bg-secondary text-sm disabled:opacity-40">›</button>
+          </div>
+        )}
+      </div>
+
+      {selected && (
+        <SuggestionDrawer ar={ar} sugg={selected} onClose={() => setSelected(null)} onSaved={() => { load(); setSelected(null); }} onDelete={() => del(selected.id)} />
+      )}
+    </div>
+  );
+}
+
+function SuggestionDrawer({ ar, sugg, onClose, onSaved, onDelete }: {
+  ar: boolean; sugg: Sugg; onClose: () => void; onSaved: () => void; onDelete: () => void;
+}) {
+  const [status, setStatus] = useState(sugg.status);
+  const [response, setResponse] = useState(sugg.admin_response ?? "");
+  const [imgUrl, setImgUrl] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (sugg.image_url) {
+      signSuggestionImage({ data: { path: sugg.image_url } }).then((r) => setImgUrl(r.url)).catch(() => setImgUrl(null));
+    }
+  }, [sugg.image_url]);
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      await updateSuggestionStatus({ data: { id: sugg.id, status, admin_response: response } });
+      toast.success(ar?"تم الحفظ":"Saved");
+      onSaved();
+    } catch (e: any) { toast.error(e.message); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
+      <div className="bg-background rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div>
+            <h3 className="text-2xl font-display font-black">{sugg.title}</h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              {sugg.author_name || "—"} • {new Date(sugg.created_at).toLocaleString(ar?"ar-EG":"en")}
+            </p>
+          </div>
+          <button onClick={onClose} className="text-2xl text-muted-foreground hover:text-foreground">✕</button>
+        </div>
+
+        <p className="text-foreground/80 whitespace-pre-wrap mb-4">{sugg.description}</p>
+
+        {sugg.link_url && (
+          <a href={sugg.link_url} target="_blank" rel="noreferrer" className="block text-sm text-primary underline mb-4 break-all">
+            🔗 {sugg.link_url}
+          </a>
+        )}
+
+        {imgUrl && (
+          <img src={imgUrl} alt="" className="rounded-2xl max-h-72 object-contain mb-4 mx-auto" />
+        )}
+
+        <div className="grid gap-3">
+          <label className="block">
+            <span className="text-xs font-bold text-muted-foreground block mb-1">{ar?"الحالة":"Status"}</span>
+            <select value={status} onChange={(e) => setStatus(e.target.value as any)} className="input">
+              <option value="new">{statusLabel("new",ar)}</option>
+              <option value="reviewed">{statusLabel("reviewed",ar)}</option>
+              <option value="resolved">{statusLabel("resolved",ar)}</option>
+              <option value="rejected">{statusLabel("rejected",ar)}</option>
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-xs font-bold text-muted-foreground block mb-1">{ar?"رد الإدارة":"Admin response"}</span>
+            <textarea value={response} onChange={(e) => setResponse(e.target.value)} rows={4} className="input" />
+          </label>
+        </div>
+
+        <div className="flex gap-2 mt-5 flex-wrap justify-end">
+          <button onClick={onDelete} className="px-4 py-2 rounded-full text-sm font-bold bg-destructive/10 text-destructive hover:bg-destructive/20">
+            {ar?"حذف":"Delete"}
+          </button>
+          <button onClick={onClose} className="px-4 py-2 rounded-full text-sm font-bold bg-secondary hover:bg-secondary/70">
+            {ar?"إلغاء":"Cancel"}
+          </button>
+          <button disabled={busy} onClick={save} className="bubble-btn text-white disabled:opacity-60" style={{ background: "var(--gradient-primary)" }}>
+            {busy ? "..." : ar?"حفظ":"Save"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

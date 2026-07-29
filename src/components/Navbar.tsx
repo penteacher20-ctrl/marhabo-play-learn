@@ -3,6 +3,7 @@ import { LogIn, LogOut } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { useRoles } from "@/lib/roles";
+import { AdminNotifications } from "@/components/AdminNotifications";
 
 export function Navbar() {
   const { tr, lang, setLang } = useI18n();
@@ -23,10 +24,12 @@ export function Navbar() {
           <NavItem to="/templates" label={tr("nav_templates")} />
           <NavItem to="/upload" label={tr("nav_upload")} />
           {user && <NavItem to="/dashboard" label={tr("nav_dashboard")} />}
+          {user && <NavItem to="/suggestions" label={tr("nav_suggestions")} />}
           {isAdmin && <NavItem to="/admin" label={lang === "ar" ? "الإدارة" : "Admin"} />}
         </nav>
 
         <div className="flex items-center gap-2">
+          {isAdmin && <AdminNotifications />}
           <Link
             to="/settings"
             className="w-9 h-9 grid place-items-center rounded-full bg-secondary hover:bg-secondary/70 transition"

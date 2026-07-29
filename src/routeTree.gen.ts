@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UploadRouteImport } from './routes/upload'
 import { Route as TemplatesRouteImport } from './routes/templates'
+import { Route as SuggestionsRouteImport } from './routes/suggestions'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -29,6 +30,11 @@ const UploadRoute = UploadRouteImport.update({
 const TemplatesRoute = TemplatesRouteImport.update({
   id: '/templates',
   path: '/templates',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SuggestionsRoute = SuggestionsRouteImport.update({
+  id: '/suggestions',
+  path: '/suggestions',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -84,6 +90,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/explore': typeof ExploreRoute
   '/settings': typeof SettingsRoute
+  '/suggestions': typeof SuggestionsRoute
   '/templates': typeof TemplatesRouteWithChildren
   '/upload': typeof UploadRoute
   '/play/$gameId': typeof PlayGameIdRoute
@@ -97,6 +104,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/explore': typeof ExploreRoute
   '/settings': typeof SettingsRoute
+  '/suggestions': typeof SuggestionsRoute
   '/templates': typeof TemplatesRouteWithChildren
   '/upload': typeof UploadRoute
   '/play/$gameId': typeof PlayGameIdRoute
@@ -111,6 +119,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/explore': typeof ExploreRoute
   '/settings': typeof SettingsRoute
+  '/suggestions': typeof SuggestionsRoute
   '/templates': typeof TemplatesRouteWithChildren
   '/upload': typeof UploadRoute
   '/play/$gameId': typeof PlayGameIdRoute
@@ -126,6 +135,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/explore'
     | '/settings'
+    | '/suggestions'
     | '/templates'
     | '/upload'
     | '/play/$gameId'
@@ -139,6 +149,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/explore'
     | '/settings'
+    | '/suggestions'
     | '/templates'
     | '/upload'
     | '/play/$gameId'
@@ -152,6 +163,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/explore'
     | '/settings'
+    | '/suggestions'
     | '/templates'
     | '/upload'
     | '/play/$gameId'
@@ -166,6 +178,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   ExploreRoute: typeof ExploreRoute
   SettingsRoute: typeof SettingsRoute
+  SuggestionsRoute: typeof SuggestionsRoute
   TemplatesRoute: typeof TemplatesRouteWithChildren
   UploadRoute: typeof UploadRoute
   PlayGameIdRoute: typeof PlayGameIdRoute
@@ -186,6 +199,13 @@ declare module '@tanstack/react-router' {
       path: '/templates'
       fullPath: '/templates'
       preLoaderRoute: typeof TemplatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/suggestions': {
+      id: '/suggestions'
+      path: '/suggestions'
+      fullPath: '/suggestions'
+      preLoaderRoute: typeof SuggestionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -273,6 +293,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   ExploreRoute: ExploreRoute,
   SettingsRoute: SettingsRoute,
+  SuggestionsRoute: SuggestionsRoute,
   TemplatesRoute: TemplatesRouteWithChildren,
   UploadRoute: UploadRoute,
   PlayGameIdRoute: PlayGameIdRoute,
