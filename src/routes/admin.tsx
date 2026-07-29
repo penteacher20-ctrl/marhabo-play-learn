@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { LayoutGrid, MessageSquare, Palette, Users, ShieldCheck } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { useI18n } from "@/lib/i18n";
@@ -79,12 +80,14 @@ interface Tpl {
   external_url: string | null;
 }
 
+type TabKey = "templates" | "suggestions" | "site" | "users";
+
 function AdminPage() {
   const { lang } = useI18n();
   const { user, loading: authLoading } = useAuth();
   const { isAdmin, isSuperAdmin, loading: rolesLoading } = useRoles();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<"templates" | "users" | "suggestions" | "site">("templates");
+  const [tab, setTab] = useState<TabKey>("templates");
   const ar = lang === "ar";
 
   useEffect(() => {
@@ -97,56 +100,101 @@ function AdminPage() {
 
   if (authLoading || rolesLoading || !user || !isAdmin) {
     return (
-      <div className="min-h-screen flex flex-col" style={{ background: "var(--gradient-hero)" }}>
+      <div className="min-h-screen flex flex-col bg-slate-50">
         <Navbar />
         <main className="container mx-auto px-4 py-12 flex-1 text-center text-muted-foreground">...</main>
       </div>
     );
   }
 
+  const nav: { key: TabKey; label: string; icon: typeof LayoutGrid; show: boolean; hint: string }[] = [
+    { key: "templates", label: ar ? "القوالب" : "Templates", icon: LayoutGrid, show: true, hint: ar ? "إدارة قوالب الألعاب" : "Manage game templates" },
+    { key: "suggestions", label: ar ? "الاقتراحات" : "Suggestions", icon: MessageSquare, show: true, hint: ar ? "ملاحظات المستخدمين" : "User feedback" },
+    { key: "site", label: ar ? "هوية الموقع" : "Site Identity", icon: Palette, show: true, hint: ar ? "اللوجو والأيقونة" : "Logo and favicon" },
+    { key: "users", label: ar ? "الأدمنز" : "Admins", icon: Users, show: isSuperAdmin, hint: ar ? "صلاحيات الفريق" : "Team permissions" },
+  ];
+
+  const current = nav.find((n) => n.key === tab) ?? nav[0];
+
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "var(--gradient-hero)" }}>
+    <div className="min-h-screen flex flex-col bg-slate-50">
       <Navbar />
-      <main className="container mx-auto px-4 py-10 flex-1">
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-          <h1 className="text-4xl font-display font-black">
-            {ar ? "لوحة الإدارة" : "Admin Panel"}{" "}
-            <span className="text-sm font-bold text-primary align-middle">
-              {isSuperAdmin ? (ar ? "(سوبر أدمن)" : "(Super Admin)") : (ar ? "(أدمن)" : "(Admin)")}
+      <main className="flex-1">
+        <div className="container mx-auto px-4 py-8">
+          {/* Header */}
+          <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>{ar ? "مِرحابو · لوحة الإدارة" : "Marhabo · Admin"}</span>
+              </div>
+              <h1 className="font-display text-3xl sm:text-4xl font-black text-slate-900 truncate">
+                {ar ? "لوحة الإدارة" : "Admin Console"}
+              </h1>
+            </div>
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border ${isSuperAdmin ? "bg-primary/10 text-primary border-primary/30" : "bg-slate-100 text-slate-700 border-slate-200"}`}>
+              <ShieldCheck className="w-3.5 h-3.5" />
+              {isSuperAdmin ? (ar ? "سوبر أدمن" : "Super Admin") : (ar ? "أدمن" : "Admin")}
             </span>
-          </h1>
-          <div className="flex gap-2 p-1.5 bg-secondary/70 rounded-full flex-wrap">
-            <TabBtn active={tab === "templates"} onClick={() => setTab("templates")}>
-              {ar ? "القوالب" : "Templates"}
-            </TabBtn>
-            <TabBtn active={tab === "suggestions"} onClick={() => setTab("suggestions")}>
-              {ar ? "الاقتراحات" : "Suggestions"}
-            </TabBtn>
-            <TabBtn active={tab === "site"} onClick={() => setTab("site")}>
-              {ar ? "هوية الموقع" : "Site"}
-            </TabBtn>
-            {isSuperAdmin && (
-              <TabBtn active={tab === "users"} onClick={() => setTab("users")}>
-                {ar ? "الأدمنز" : "Admins"}
-              </TabBtn>
-            )}
+          </div>
+
+          <div className="grid lg:grid-cols-[240px_minmax(0,1fr)] gap-6">
+            {/* Sidebar */}
+            <aside className="lg:sticky lg:top-20 self-start">
+              <nav className="bg-white rounded-2xl border border-slate-200 shadow-sm p-2 flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible">
+                {nav.filter((n) => n.show).map((n) => {
+                  const active = n.key === tab;
+                  const Icon = n.icon;
+                  return (
+                    <button
+                      key={n.key}
+                      onClick={() => setTab(n.key)}
+                      className={`shrink-0 lg:shrink w-full text-start flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition ${
+                        active
+                          ? "bg-primary text-white shadow-sm"
+                          : "text-slate-700 hover:bg-slate-100"
+                      }`}
+                    >
+                      <Icon className="w-4 h-4 shrink-0" />
+                      <span className="truncate">{n.label}</span>
+                    </button>
+                  );
+                })}
+              </nav>
+            </aside>
+
+            {/* Content */}
+            <section className="min-w-0 admin-scope">
+              <div className="mb-5 pb-4 border-b border-slate-200">
+                <h2 className="font-display text-2xl font-black text-slate-900 flex items-center gap-2">
+                  <current.icon className="w-5 h-5 text-primary" />
+                  {current.label}
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">{current.hint}</p>
+              </div>
+
+              {tab === "templates" && <TemplatesAdmin ar={ar} />}
+              {tab === "suggestions" && <SuggestionsAdmin ar={ar} />}
+              {tab === "site" && <SiteAdmin ar={ar} />}
+              {tab === "users" && <AdminsAdmin ar={ar} />}
+
+              <style>{`
+                .admin-scope .card-pop { border-radius: 1rem; box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 1px 3px rgba(15,23,42,0.06); border: 1px solid rgb(226 232 240); background: #fff; transition: box-shadow .2s ease; }
+                .admin-scope .card-pop:hover { transform: none; box-shadow: 0 2px 4px rgba(15,23,42,0.06), 0 4px 12px rgba(15,23,42,0.08); }
+                .admin-scope .bubble-btn { border-radius: 0.75rem; padding: 0.6rem 1.1rem; box-shadow: 0 1px 2px rgba(15,23,42,0.08); }
+                .admin-scope .bubble-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(15,23,42,0.12); }
+                .admin-scope .bubble-btn:active { transform: translateY(0); }
+                .admin-scope .input { border-radius: 0.6rem !important; }
+              `}</style>
+            </section>
           </div>
         </div>
-
-        {tab === "templates" ? <TemplatesAdmin ar={ar} /> : tab === "suggestions" ? <SuggestionsAdmin ar={ar} /> : tab === "site" ? <SiteAdmin ar={ar} /> : <AdminsAdmin ar={ar} />}
       </main>
       <Footer />
     </div>
   );
 }
 
-function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button onClick={onClick} className={`px-5 py-2 rounded-full text-sm font-bold transition ${active ? "bg-background text-primary shadow-sm" : "text-foreground/70 hover:text-primary"}`}>
-      {children}
-    </button>
-  );
-}
 
 function TemplatesAdmin({ ar }: { ar: boolean }) {
   const [rows, setRows] = useState<Tpl[]>([]);
