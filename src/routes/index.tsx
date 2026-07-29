@@ -20,13 +20,19 @@ function Index() {
 
   useEffect(() => {
     supabase.from("templates").select("*").order("sort_order").then(({ data }) => setTemplates((data as Tpl[]) ?? []));
-    supabase
-      .from("games")
-      .select("id,title,description,thumbnail_url,play_count,created_at,user_id, profiles(name)")
-      .eq("is_public", true)
-      .order("created_at", { ascending: false })
-      .limit(8)
-      .then(({ data }) => setCommunityGames((data as any) ?? []));
+    (async () => {
+      const { data: games } = await supabase
+        .from("games")
+        .select("id,title,description,thumbnail_url,play_count,created_at,user_id")
+        .eq("is_public", true)
+        .order("created_at", { ascending: false })
+        .limit(8);
+      if (!games || games.length === 0) { setCommunityGames([]); return; }
+      const ids = Array.from(new Set(games.map((g: any) => g.user_id)));
+      const { data: profs } = await supabase.from("profiles").select("id,name").in("id", ids);
+      const map = new Map((profs ?? []).map((p: any) => [p.id, p.name]));
+      setCommunityGames(games.map((g: any) => ({ ...g, profiles: { name: map.get(g.user_id) ?? null } })));
+    })();
   }, []);
 
   return (

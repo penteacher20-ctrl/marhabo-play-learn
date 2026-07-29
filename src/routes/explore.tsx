@@ -27,13 +27,21 @@ function Explore() {
   const [sort, setSort] = useState<"new" | "popular">("new");
 
   useEffect(() => {
-    let q = supabase
-      .from("games")
-      .select("id,title,description,thumbnail_url,play_count,created_at,user_id, profiles(name)")
-      .eq("is_public", true)
-      .limit(60);
-    q = sort === "new" ? q.order("created_at", { ascending: false }) : q.order("play_count", { ascending: false });
-    q.then(({ data }) => setGames((data as any) ?? []));
+    (async () => {
+      let q = supabase
+        .from("games")
+        .select("id,title,description,thumbnail_url,play_count,created_at,user_id")
+        .eq("is_public", true)
+        .limit(60);
+      q = sort === "new" ? q.order("created_at", { ascending: false }) : q.order("play_count", { ascending: false });
+      const { data } = await q;
+      const rows = (data as any[]) ?? [];
+      if (rows.length === 0) { setGames([]); return; }
+      const ids = Array.from(new Set(rows.map((g) => g.user_id)));
+      const { data: profs } = await supabase.from("profiles").select("id,name").in("id", ids);
+      const map = new Map((profs ?? []).map((p: any) => [p.id, p.name]));
+      setGames(rows.map((g) => ({ ...g, profiles: { name: map.get(g.user_id) ?? null } })));
+    })();
   }, [sort]);
 
   return (
