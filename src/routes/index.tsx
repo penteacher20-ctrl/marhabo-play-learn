@@ -11,13 +11,22 @@ import mascot from "@/assets/mascot-fox.png";
 export const Route = createFileRoute("/")({ component: Index });
 
 interface Tpl { id: string; slug: string; name_ar: string; name_en: string; description_ar: string | null; description_en: string | null; icon: string | null; is_available: boolean; }
+interface CommunityGame { id: string; title: string; description: string | null; thumbnail_url: string | null; play_count: number; created_at: string; user_id: string; profiles?: { name: string | null } | null; }
 
 function Index() {
   const { tr, lang } = useI18n();
   const [templates, setTemplates] = useState<Tpl[]>([]);
+  const [communityGames, setCommunityGames] = useState<CommunityGame[]>([]);
 
   useEffect(() => {
     supabase.from("templates").select("*").order("sort_order").then(({ data }) => setTemplates((data as Tpl[]) ?? []));
+    supabase
+      .from("games")
+      .select("id,title,description,thumbnail_url,play_count,created_at,user_id, profiles(name)")
+      .eq("is_public", true)
+      .order("created_at", { ascending: false })
+      .limit(8)
+      .then(({ data }) => setCommunityGames((data as any) ?? []));
   }, []);
 
   return (
@@ -83,6 +92,23 @@ function Index() {
         </div>
       </section>
 
+      {/* COMMUNITY GAMES */}
+      {communityGames.length > 0 && (
+        <section className="container mx-auto px-4 py-16">
+          <div className="text-center mb-10">
+            <h2 className="text-4xl md:text-5xl font-display font-black">{tr("community_title")}</h2>
+            <p className="mt-3 text-muted-foreground text-lg">{tr("community_sub")}</p>
+          </div>
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+            {communityGames.map((g, i) => <CommunityCard key={g.id} g={g} idx={i} />)}
+          </div>
+          <div className="text-center mt-8">
+            <Link to="/explore" className="bubble-btn text-white" style={{ background: "var(--gradient-fresh)" }}>{tr("view_all")} →</Link>
+          </div>
+        </section>
+      )}
+
+
       {/* HOW */}
       <section className="container mx-auto px-4 py-16">
         <h2 className="text-4xl md:text-5xl font-display font-black text-center mb-12">{tr("how_title")}</h2>
@@ -115,6 +141,29 @@ function TemplateCard({ t, idx }: { t: Tpl; idx: number }) {
         <span className="inline-block px-4 py-2 rounded-full bg-muted text-muted-foreground font-bold text-sm">{tr("coming_soon")}</span>
       )}
     </div>
+  );
+}
+
+function CommunityCard({ g, idx }: { g: CommunityGame; idx: number }) {
+  const { tr, lang } = useI18n();
+  const color = COLORS[idx % COLORS.length];
+  const authorName = g.profiles?.name || (lang === "ar" ? "عضو" : "member");
+  return (
+    <Link to="/play/$gameId" params={{ gameId: g.id }} className="card-pop overflow-hidden flex flex-col group hover:-translate-y-1 transition-transform">
+      <div
+        className="aspect-video grid place-items-center text-5xl relative overflow-hidden"
+        style={g.thumbnail_url ? { backgroundImage: `url(${g.thumbnail_url})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: color }}
+      >
+        {!g.thumbnail_url && <span className="text-white drop-shadow-lg">🎮</span>}
+        <span className="absolute top-2 end-2 px-2 py-0.5 rounded-full bg-black/40 text-white text-xs font-bold backdrop-blur">👁 {g.play_count}</span>
+      </div>
+      <div className="p-4 flex-1 flex flex-col">
+        <h3 className="font-display font-extrabold text-base line-clamp-1">{g.title}</h3>
+        <p className="text-xs text-muted-foreground mt-1">{tr("by")} {authorName}</p>
+        {g.description && <p className="text-xs text-foreground/70 mt-2 line-clamp-2">{g.description}</p>}
+        <span className="mt-3 inline-block text-center px-3 py-1.5 rounded-full text-xs font-bold text-white" style={{ background: color }}>▶ {tr("play_now")}</span>
+      </div>
+    </Link>
   );
 }
 
