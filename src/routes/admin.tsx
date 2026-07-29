@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { listAdmins, addAdminByEmail, removeAdmin } from "@/lib/admin.functions";
 import { useAuth as useAuthForIcon } from "@/lib/auth";
 import { getAllSuggestions, getSuggestionById, updateSuggestionStatus, deleteSuggestion, signSuggestionImage } from "@/lib/suggestions.functions";
+import { ChatModal } from "@/routes/suggestions";
 
 const isIconUrl = (v: string | null | undefined) => !!v && /^https?:\/\//i.test(v);
 
