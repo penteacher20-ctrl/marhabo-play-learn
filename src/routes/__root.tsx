@@ -3,6 +3,7 @@ import appCss from "../styles.css?url";
 import { I18nProvider } from "@/lib/i18n";
 import { AuthProvider } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
+import { SiteSettingsProvider } from "@/lib/site-settings";
 
 function NotFoundComponent() {
   return (
@@ -56,10 +57,12 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   return (
     <AuthProvider>
-      <I18nProvider>
-        <Outlet />
-        <Toaster position="top-center" richColors />
-      </I18nProvider>
+      <SiteSettingsProvider>
+        <I18nProvider>
+          <Outlet />
+          <Toaster position="top-center" richColors />
+        </I18nProvider>
+      </SiteSettingsProvider>
     </AuthProvider>
   );
 }
