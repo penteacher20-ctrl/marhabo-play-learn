@@ -8,6 +8,60 @@ import { useAuth } from "@/lib/auth";
 import { useRoles } from "@/lib/roles";
 import { supabase } from "@/integrations/supabase/client";
 import { listAdmins, addAdminByEmail, removeAdmin } from "@/lib/admin.functions";
+import { useAuth as useAuthForIcon } from "@/lib/auth";
+
+const isIconUrl = (v: string | null | undefined) => !!v && /^https?:\/\//i.test(v);
+
+async function uploadTemplateIcon(file: File, userId: string): Promise<string> {
+  const ext = (file.name.split(".").pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const path = `${userId}/templates/${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage.from("thumbnails").upload(path, file, {
+    cacheControl: "3600", upsert: false, contentType: file.type || undefined,
+  });
+  if (error) throw error;
+  const { data } = supabase.storage.from("thumbnails").getPublicUrl(path);
+  return data.publicUrl;
+}
+
+function IconPicker({ value, onChange, size = "lg" }: { value: string; onChange: (v: string) => void; size?: "lg" | "md" }) {
+  const { user } = useAuthForIcon();
+  const [busy, setBusy] = useState(false);
+  const isUrl = isIconUrl(value);
+  const boxCls = size === "lg" ? "h-20 w-20 text-4xl" : "h-14 w-14 text-2xl";
+
+  const pick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !user) return;
+    if (file.size > 2 * 1024 * 1024) { toast.error("Max 2MB"); return; }
+    setBusy(true);
+    try {
+      const url = await uploadTemplateIcon(file, user.id);
+      onChange(url);
+    } catch (err: any) { toast.error(err.message); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <div className={`${boxCls} rounded-2xl border-2 border-border bg-white flex items-center justify-center overflow-hidden relative`}>
+        {isUrl ? (
+          <img src={value} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <span>{value || "🎮"}</span>
+        )}
+        {busy && <div className="absolute inset-0 bg-white/70 flex items-center justify-center text-xs">...</div>}
+      </div>
+      <label className="text-[10px] font-bold text-primary cursor-pointer hover:underline">
+        📷 رفع
+        <input type="file" accept="image/*" className="hidden" onChange={pick} />
+      </label>
+      {isUrl && (
+        <button type="button" onClick={() => onChange("🎮")} className="text-[10px] text-muted-foreground hover:text-destructive">✕ إزالة</button>
+      )}
+    </div>
+  );
+}
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
