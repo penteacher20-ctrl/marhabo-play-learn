@@ -84,7 +84,7 @@ function AdminPage() {
   const { user, loading: authLoading } = useAuth();
   const { isAdmin, isSuperAdmin, loading: rolesLoading } = useRoles();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<"templates" | "users" | "suggestions">("templates");
+  const [tab, setTab] = useState<"templates" | "users" | "suggestions" | "site">("templates");
   const ar = lang === "ar";
 
   useEffect(() => {
