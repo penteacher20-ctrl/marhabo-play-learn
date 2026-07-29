@@ -331,7 +331,14 @@ function NewTemplateForm({ ar, onCreated }: { ar: boolean; onCreated: () => void
       </div>
       <div className="grid sm:grid-cols-2 gap-3">
         <Field label={ar ? "المُعرّف (slug)" : "Slug"}><input required value={f.slug} onChange={(e) => upd("slug", e.target.value)} className="input" placeholder="my-template" /></Field>
-        <Field label={ar ? "الأيقونة" : "Icon"}><input value={f.icon} onChange={(e) => upd("icon", e.target.value)} className="input text-2xl" maxLength={4} /></Field>
+        <Field label={ar ? "الأيقونة (إيموجي أو صورة)" : "Icon (emoji or image)"}>
+          <div className="flex items-center gap-3">
+            <IconPicker value={f.icon} onChange={(v) => upd("icon", v)} size="md" />
+            {!isIconUrl(f.icon) && (
+              <input value={f.icon} onChange={(e) => upd("icon", e.target.value)} className="input text-2xl flex-1" maxLength={4} placeholder="🎮" />
+            )}
+          </div>
+        </Field>
         <Field label={ar ? "الاسم عربي *" : "Name AR *"}><input required value={f.name_ar} onChange={(e) => upd("name_ar", e.target.value)} className="input" /></Field>
         <Field label={ar ? "الاسم إنجليزي *" : "Name EN *"}><input required value={f.name_en} onChange={(e) => upd("name_en", e.target.value)} className="input" /></Field>
         <Field label={ar ? "الوصف عربي" : "Description AR"}><input value={f.description_ar} onChange={(e) => upd("description_ar", e.target.value)} className="input" /></Field>
