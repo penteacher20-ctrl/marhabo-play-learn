@@ -60,8 +60,10 @@ function RootComponent() {
     <AuthProvider>
       <SiteSettingsProvider>
         <I18nProvider>
-          <Outlet />
-          <Toaster position="top-center" richColors />
+          <MotionProvider>
+            <Outlet />
+            <Toaster position="top-center" richColors />
+          </MotionProvider>
         </I18nProvider>
       </SiteSettingsProvider>
     </AuthProvider>
