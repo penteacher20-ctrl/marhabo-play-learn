@@ -304,17 +304,17 @@ function PlayPage() {
     <div className="min-h-screen flex flex-col bg-background">
       {!isFullscreen && <Navbar />}
       {!isFullscreen && (
-        <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-b border-border bg-background/80 backdrop-blur">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 border-b border-border bg-background/80 backdrop-blur">
           <div className="min-w-0">
-            <h1 className="text-base md:text-lg font-display font-extrabold truncate">{game.title}</h1>
-            {creator && <p className="text-xs text-muted-foreground truncate">بواسطة {creator}</p>}
+            <h1 className="text-sm md:text-lg font-display font-extrabold truncate">{game.title}</h1>
+            {creator && <p className="hidden md:block text-xs text-muted-foreground truncate">بواسطة {creator}</p>}
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="text-xs text-muted-foreground">المقاس:</label>
+          <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
+            <label className="hidden md:inline text-xs text-muted-foreground">المقاس:</label>
             <select
               value={fit}
               onChange={(e) => setFit(e.target.value as FitMode)}
-              className="text-xs rounded-md border border-border bg-background px-2 py-1"
+              className="hidden md:inline-block text-xs rounded-md border border-border bg-background px-2 py-1"
               aria-label="ضبط مقاس الكانفاس"
             >
               <option value="auto">تلقائي</option>
@@ -322,15 +322,16 @@ function PlayPage() {
               <option value="fill">ملء الشاشة</option>
               <option value="stretch">تمدد</option>
             </select>
-            <button onClick={toggleFullscreen} className="bubble-btn !py-1.5 !px-4 text-xs text-white" style={{ background: "var(--gradient-primary, linear-gradient(135deg,#6366f1,#8b5cf6))" }}>⛶ ملء الشاشة</button>
-            <button onClick={() => copy(shareUrl)} className="bubble-btn !py-1.5 !px-4 text-xs text-white" style={{ background: "var(--gradient-fresh)" }}>🔗 {tr("share_link")}</button>
-            <button onClick={() => setShowEmbed(!showEmbed)} className="bubble-btn !py-1.5 !px-4 text-xs text-foreground" style={{ background: "var(--yellow-fun)" }}>📋 {tr("embed_code")}</button>
+            <button onClick={toggleFullscreen} title="ملء الشاشة" aria-label="ملء الشاشة" className="bubble-btn !py-1 !px-2.5 md:!py-1.5 md:!px-4 text-xs text-white" style={{ background: "var(--gradient-primary, linear-gradient(135deg,#6366f1,#8b5cf6))" }}>⛶<span className="hidden md:inline"> ملء الشاشة</span></button>
+            <button onClick={() => copy(shareUrl)} title={tr("share_link")} aria-label={tr("share_link")} className="bubble-btn !py-1 !px-2.5 md:!py-1.5 md:!px-4 text-xs text-white" style={{ background: "var(--gradient-fresh)" }}>🔗<span className="hidden md:inline"> {tr("share_link")}</span></button>
+            <button onClick={() => setShowEmbed(!showEmbed)} title={tr("embed_code")} aria-label={tr("embed_code")} className="bubble-btn !py-1 !px-2.5 md:!py-1.5 md:!px-4 text-xs text-foreground" style={{ background: "var(--yellow-fun)" }}>📋<span className="hidden md:inline"> {tr("embed_code")}</span></button>
           </div>
         </div>
       )}
       {showEmbed && !isFullscreen && (
         <pre onClick={() => copy(embed)} className="cursor-pointer text-xs bg-secondary/60 px-3 py-2 overflow-x-auto">{embed}</pre>
       )}
+
       <div ref={wrapRef} className="flex-1 min-h-0 relative bg-black">
         {isFullscreen && (
           <button
