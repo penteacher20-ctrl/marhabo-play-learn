@@ -218,11 +218,16 @@ function EditGame() {
 
   const remove = async () => {
     if (!confirm("هل أنت متأكد من حذف اللعبة؟")) return;
-    const { error } = await supabase.from("games").delete().eq("id", gameId);
+    const { data, error } = await supabase.from("games").delete().eq("id", gameId).select("id");
     if (error) { toast.error(error.message); return; }
+    if (!data || data.length === 0) {
+      toast.error("لم يتم الحذف: هذه اللعبة ليست في حسابك الحالي. سجّل الدخول بالحساب الذي أنشأها.");
+      return;
+    }
     toast.success("تم الحذف");
     navigate({ to: "/dashboard" });
   };
+
 
   if (notFound) return <Wrapper><div className="card-pop p-10 text-center max-w-md mx-auto"><p>اللعبة غير موجودة أو ليست لك.</p></div></Wrapper>;
 
