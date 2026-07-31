@@ -37,6 +37,106 @@ function extractTitle(html: string, fallback: string): string {
   return m ? m[1].trim() : fallback;
 }
 
+// Renders an external embed (iframe URL) so it always fits the device:
+// - "responsive": full width with the author's aspect ratio
+// - "fixed": author's px size, scaled down proportionally when the screen is narrower
+// - default: fills the available area
+function ResponsiveEmbed({
+  url,
+  title,
+  isFullscreen,
+  iframeRef,
+  onError,
+}: {
+  url: string;
+  title: string;
+  isFullscreen: boolean;
+  iframeRef: React.RefObject<HTMLIFrameElement | null>;
+  onError: () => void;
+}) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState({ w: 0, h: 0 });
+
+  useEffect(() => {
+    const el = hostRef.current;
+    if (!el) return;
+    const update = () => setBox({ w: el.clientWidth, h: el.clientHeight });
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    window.addEventListener("orientationchange", update);
+    return () => { ro.disconnect(); window.removeEventListener("orientationchange", update); };
+  }, []);
+
+  // Parse sizing preferences from the URL hash (#lv=size=...&w=...&h=...&ar=...)
+  let src = url;
+  let size = "";
+  let ar = "16/10";
+  let fixedW = 0;
+  let fixedH = 0;
+  try {
+    const u = new URL(url);
+    const raw = u.hash.startsWith("#") ? u.hash.slice(1) : u.hash;
+    if (raw.startsWith("lv=")) {
+      const p = new URLSearchParams(raw.slice(3));
+      size = p.get("size") || "";
+      ar = p.get("ar") || ar;
+      fixedW = parseInt((p.get("w") || "").replace(/[^\d]/g, ""), 10) || 0;
+      fixedH = parseInt((p.get("h") || "").replace(/[^\d]/g, ""), 10) || 0;
+      u.hash = "";
+      src = u.toString();
+    }
+  } catch { /* keep defaults */ }
+
+  const frame = (style: React.CSSProperties) => (
+    <iframe
+      ref={iframeRef}
+      src={src}
+      title={title}
+      className="block border-0"
+      style={style}
+      allowFullScreen
+      allow="autoplay; fullscreen; encrypted-media; gyroscope; picture-in-picture"
+      onError={onError}
+    />
+  );
+
+  // Fullscreen or no explicit sizing → fill the whole area
+  if (isFullscreen || (size !== "fixed" && size !== "responsive")) {
+    return (
+      <div ref={hostRef} className="absolute inset-0">
+        {frame({ width: "100%", height: "100%" })}
+      </div>
+    );
+  }
+
+  if (size === "responsive") {
+    const [arW, arH] = ar.split("/").map((n) => parseFloat(n) || 1);
+    // Never exceed the available height: shrink width when the ratio is too tall
+    const maxW = box.h > 0 ? Math.min(box.w, (box.h * arW) / arH) : box.w;
+    return (
+      <div ref={hostRef} className="absolute inset-0 grid place-items-center p-1 sm:p-3">
+        {frame({ width: maxW ? `${Math.floor(maxW)}px` : "100%", maxWidth: "100%", aspectRatio: `${arW} / ${arH}`, height: "auto" })}
+      </div>
+    );
+  }
+
+  // Fixed size: scale down to fit both width and height, never scale up
+  const w = fixedW || 900;
+  const h = fixedH || 600;
+  const pad = 16;
+  const scale = box.w > 0 && box.h > 0 ? Math.min(1, (box.w - pad) / w, (box.h - pad) / h) : 1;
+  return (
+    <div ref={hostRef} className="absolute inset-0 grid place-items-center overflow-hidden">
+      <div style={{ width: w * scale, height: h * scale }}>
+        <div style={{ width: w, height: h, transform: `scale(${scale})`, transformOrigin: "top left" }}>
+          {frame({ width: `${w}px`, height: `${h}px` })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 function PlayPage() {
   const { gameId } = Route.useParams();
@@ -313,46 +413,15 @@ function PlayPage() {
               </button>
             </div>
           </div>
-        ) : game.type === "embed" && game.file_url ? (() => {
-          // Parse sizing preferences from the URL hash (#lv=size=...&w=...&h=...&ar=...)
-          let embedSrc = game.file_url;
-          let embedStyle: React.CSSProperties = { width: "100%", height: "100%" };
-          let wrapperStyle: React.CSSProperties | null = null;
-          try {
-            const u = new URL(game.file_url);
-            const raw = u.hash.startsWith("#") ? u.hash.slice(1) : u.hash;
-            if (raw.startsWith("lv=")) {
-              const p = new URLSearchParams(raw.slice(3));
-              const size = p.get("size");
-              if (size === "fixed") {
-                const w = p.get("w") || "100%";
-                const h = p.get("h") || "600px";
-                embedStyle = { width: w, height: h, maxWidth: "100%" };
-                wrapperStyle = { display: "grid", placeItems: "center", padding: "12px" };
-              } else if (size === "responsive") {
-                const ar = p.get("ar") || "16/10";
-                if (!isFullscreen) {
-                  embedStyle = { width: "100%", aspectRatio: ar.replace("/", " / "), height: "auto", maxHeight: "calc(100vh - 110px)" };
-                }
-              }
-              u.hash = "";
-              embedSrc = u.toString();
-            }
-          } catch { /* keep defaults */ }
-          const frame = (
-            <iframe
-              ref={iframeRef}
-              src={embedSrc}
-              title={game.title}
-              className="block border-0"
-              style={{ ...(isFullscreen ? { width: "100%", height: "100%", minHeight: "100vh" } : embedStyle) }}
-              allowFullScreen
-              allow="autoplay; fullscreen; encrypted-media; gyroscope; picture-in-picture"
-              onError={() => setLoadError("فشل تحميل اللعبة المضمّنة")}
-            />
-          );
-          return wrapperStyle && !isFullscreen ? <div style={wrapperStyle}>{frame}</div> : frame;
-        })() : html ? (
+        ) : game.type === "embed" && game.file_url ? (
+          <ResponsiveEmbed
+            url={game.file_url}
+            title={game.title}
+            isFullscreen={isFullscreen}
+            iframeRef={iframeRef}
+            onError={() => setLoadError("فشل تحميل اللعبة المضمّنة")}
+          />
+        ) : html ? (
           <iframe
             ref={iframeRef}
             srcDoc={html}
