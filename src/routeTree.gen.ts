@@ -18,6 +18,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as UUserIdRouteImport } from './routes/u.$userId'
 import { Route as PlayGameIdRouteImport } from './routes/play.$gameId'
 import { Route as TemplatesSlugNewRouteImport } from './routes/templates.$slug.new'
 import { Route as GamesGameIdEditRouteImport } from './routes/games.$gameId.edit'
@@ -67,6 +68,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UUserIdRoute = UUserIdRouteImport.update({
+  id: '/u/$userId',
+  path: '/u/$userId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PlayGameIdRoute = PlayGameIdRouteImport.update({
   id: '/play/$gameId',
   path: '/play/$gameId',
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/templates': typeof TemplatesRouteWithChildren
   '/upload': typeof UploadRoute
   '/play/$gameId': typeof PlayGameIdRoute
+  '/u/$userId': typeof UUserIdRoute
   '/games/$gameId/edit': typeof GamesGameIdEditRoute
   '/templates/$slug/new': typeof TemplatesSlugNewRoute
 }
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/templates': typeof TemplatesRouteWithChildren
   '/upload': typeof UploadRoute
   '/play/$gameId': typeof PlayGameIdRoute
+  '/u/$userId': typeof UUserIdRoute
   '/games/$gameId/edit': typeof GamesGameIdEditRoute
   '/templates/$slug/new': typeof TemplatesSlugNewRoute
 }
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   '/templates': typeof TemplatesRouteWithChildren
   '/upload': typeof UploadRoute
   '/play/$gameId': typeof PlayGameIdRoute
+  '/u/$userId': typeof UUserIdRoute
   '/games/$gameId/edit': typeof GamesGameIdEditRoute
   '/templates/$slug/new': typeof TemplatesSlugNewRoute
 }
@@ -139,6 +148,7 @@ export interface FileRouteTypes {
     | '/templates'
     | '/upload'
     | '/play/$gameId'
+    | '/u/$userId'
     | '/games/$gameId/edit'
     | '/templates/$slug/new'
   fileRoutesByTo: FileRoutesByTo
@@ -153,6 +163,7 @@ export interface FileRouteTypes {
     | '/templates'
     | '/upload'
     | '/play/$gameId'
+    | '/u/$userId'
     | '/games/$gameId/edit'
     | '/templates/$slug/new'
   id:
@@ -167,6 +178,7 @@ export interface FileRouteTypes {
     | '/templates'
     | '/upload'
     | '/play/$gameId'
+    | '/u/$userId'
     | '/games/$gameId/edit'
     | '/templates/$slug/new'
   fileRoutesById: FileRoutesById
@@ -182,6 +194,7 @@ export interface RootRouteChildren {
   TemplatesRoute: typeof TemplatesRouteWithChildren
   UploadRoute: typeof UploadRoute
   PlayGameIdRoute: typeof PlayGameIdRoute
+  UUserIdRoute: typeof UUserIdRoute
   GamesGameIdEditRoute: typeof GamesGameIdEditRoute
 }
 
@@ -250,6 +263,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/u/$userId': {
+      id: '/u/$userId'
+      path: '/u/$userId'
+      fullPath: '/u/$userId'
+      preLoaderRoute: typeof UUserIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/play/$gameId': {
       id: '/play/$gameId'
       path: '/play/$gameId'
@@ -297,8 +317,19 @@ const rootRouteChildren: RootRouteChildren = {
   TemplatesRoute: TemplatesRouteWithChildren,
   UploadRoute: UploadRoute,
   PlayGameIdRoute: PlayGameIdRoute,
+  UUserIdRoute: UUserIdRoute,
   GamesGameIdEditRoute: GamesGameIdEditRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
