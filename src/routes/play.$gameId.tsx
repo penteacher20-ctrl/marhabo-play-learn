@@ -5,6 +5,7 @@ import { Navbar } from "@/components/Navbar";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { generateColoring, generatePuzzle, generateMatching, generateWheel, generateQuiz, generateBlanks, generateTower, type TowerQuestion } from "@/lib/templates";
+import { useEmbed, useEmbedFullBleed } from "@/lib/embed";
 
 export const Route = createFileRoute("/play/$gameId")({ component: PlayPage });
 
@@ -51,6 +52,10 @@ function PlayPage() {
   const [fit, setFit] = useState<FitMode>("auto");
   const wrapRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const isEmbedMode = useEmbed();
+  useEmbedFullBleed(isEmbedMode);
+  const chromeHidden = isFullscreen || isEmbedMode;
+
 
   useEffect(() => {
 
@@ -258,9 +263,9 @@ function PlayPage() {
   })();
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {!isFullscreen && <Navbar />}
-      {!isFullscreen && (
+    <div className={isEmbedMode ? "flex flex-col bg-background w-screen h-[100dvh] overflow-hidden" : "min-h-screen flex flex-col bg-background"}>
+      {!chromeHidden && <Navbar />}
+      {!chromeHidden && (
         <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-b border-border bg-background/80 backdrop-blur">
           <div className="min-w-0">
             <h1 className="text-base md:text-lg font-display font-extrabold truncate">{game.title}</h1>
@@ -285,11 +290,11 @@ function PlayPage() {
           </div>
         </div>
       )}
-      {showEmbed && !isFullscreen && (
+      {showEmbed && !chromeHidden && (
         <pre onClick={() => copy(embed)} className="cursor-pointer text-xs bg-secondary/60 px-3 py-2 overflow-x-auto">{embed}</pre>
       )}
-      <div ref={wrapRef} className="flex-1 min-h-0 relative bg-black">
-        {isFullscreen && (
+      <div ref={wrapRef} className={`flex-1 min-h-0 relative bg-black ${isEmbedMode ? "lov-embed-stage" : ""}`}>
+        {isFullscreen && !isEmbedMode && (
           <button
             onClick={toggleFullscreen}
             className="absolute top-3 right-3 z-10 rounded-full bg-black/60 text-white text-xs px-3 py-1.5 backdrop-blur hover:bg-black/80"
@@ -331,7 +336,7 @@ function PlayPage() {
                 wrapperStyle = { display: "grid", placeItems: "center", padding: "12px" };
               } else if (size === "responsive") {
                 const ar = p.get("ar") || "16/10";
-                if (!isFullscreen) {
+                if (!isFullscreen && !isEmbedMode) {
                   embedStyle = { width: "100%", aspectRatio: ar.replace("/", " / "), height: "auto", maxHeight: "calc(100vh - 110px)" };
                 }
               }
@@ -345,20 +350,20 @@ function PlayPage() {
               src={embedSrc}
               title={game.title}
               className="block border-0"
-              style={{ ...(isFullscreen ? { width: "100%", height: "100%", minHeight: "100vh" } : embedStyle) }}
+              style={{ ...(chromeHidden ? { width: "100%", height: "100%", minHeight: isEmbedMode ? "100dvh" : "100vh" } : embedStyle) }}
               allowFullScreen
               allow="autoplay; fullscreen; encrypted-media; gyroscope; picture-in-picture"
               onError={() => setLoadError("فشل تحميل اللعبة المضمّنة")}
             />
           );
-          return wrapperStyle && !isFullscreen ? <div style={wrapperStyle}>{frame}</div> : frame;
+          return wrapperStyle && !chromeHidden ? <div style={wrapperStyle}>{frame}</div> : frame;
         })() : html ? (
           <iframe
             ref={iframeRef}
             srcDoc={html}
             title={game.title}
             className="block border-0"
-            style={{ ...iframeStyle, minHeight: isFullscreen ? "100vh" : "calc(100vh - 110px)" }}
+            style={{ ...iframeStyle, minHeight: isEmbedMode ? "100dvh" : isFullscreen ? "100vh" : "calc(100vh - 110px)" }}
             sandbox="allow-scripts allow-same-origin allow-downloads"
             allowFullScreen
             onError={() => setLoadError("فشل عرض اللعبة داخل الإطار")}

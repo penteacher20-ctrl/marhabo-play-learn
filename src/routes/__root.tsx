@@ -4,6 +4,7 @@ import { I18nProvider } from "@/lib/i18n";
 import { AuthProvider } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
 import { SiteSettingsProvider } from "@/lib/site-settings";
+import { EmbedModeEffect } from "@/lib/embed";
 
 function NotFoundComponent() {
   return (
@@ -59,6 +60,7 @@ function RootComponent() {
     <AuthProvider>
       <SiteSettingsProvider>
         <I18nProvider>
+          <EmbedModeEffect />
           <Outlet />
           <Toaster position="top-center" richColors />
         </I18nProvider>
