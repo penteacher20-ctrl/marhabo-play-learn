@@ -1,11 +1,27 @@
 import { useEffect, useState } from "react";
 
+/** Hosts where the app is framed by the editor itself — not a real embed. */
+function isEditorPreviewHost(host: string): boolean {
+  return (
+    host.startsWith("id-preview--") ||
+    host.endsWith(".lovableproject.com") ||
+    host === "localhost" ||
+    host === "127.0.0.1"
+  );
+}
+
 /** True when the app is rendered inside an iframe or ?embed=1 is present. */
 export function detectEmbed(): boolean {
   if (typeof window === "undefined") return false;
   try {
     const params = new URLSearchParams(window.location.search);
     if (params.get("embed") === "1") return true;
+  } catch {
+    /* ignore */
+  }
+  // Lovable's own preview renders the site in an iframe; don't treat that as embed.
+  try {
+    if (isEditorPreviewHost(window.location.hostname)) return false;
   } catch {
     /* ignore */
   }
@@ -16,6 +32,7 @@ export function detectEmbed(): boolean {
     return true;
   }
 }
+
 
 /**
  * Embed mode flag. Always false during SSR/first render to avoid hydration
