@@ -200,6 +200,7 @@ function AdminPage() {
 function TemplatesAdmin({ ar }: { ar: boolean }) {
   const [rows, setRows] = useState<Tpl[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
+  const { isSuperAdmin } = useRoles();
 
   const load = () => supabase.from("templates").select("*").order("sort_order").then(({ data }) => setRows((data as Tpl[]) ?? []));
   useEffect(() => { load(); }, []);
@@ -211,6 +212,19 @@ function TemplatesAdmin({ ar }: { ar: boolean }) {
     if (error) toast.error(error.message);
     else { toast.success(ar ? "تم الحفظ" : "Saved"); load(); }
   };
+
+  const remove = async (t: Tpl) => {
+    const msg = ar
+      ? `حذف قالب "${t.name_ar}"؟\nلن يظهر بعد ذلك لإنشاء ألعاب جديدة، أما الألعاب التي أنشأها المستخدمون من خلاله فستبقى موجودة في حساباتهم ولا يحذفها إلا صاحبها.`
+      : `Delete template "${t.name_en}"?\nIt will no longer be available for new games. Games users already created with it stay in their accounts — only their owner can delete them.`;
+    if (!confirm(msg)) return;
+    setBusy(t.id);
+    const { error } = await supabase.from("templates").delete().eq("id", t.id);
+    setBusy(null);
+    if (error) toast.error(error.message);
+    else { toast.success(ar ? "تم حذف القالب" : "Template deleted"); load(); }
+  };
+
 
   return (
     <div className="grid gap-4">
@@ -257,10 +271,20 @@ function TemplatesAdmin({ ar }: { ar: boolean }) {
               <span className="text-sm font-bold">{ar ? "متاح" : "Available"}</span>
             </label>
           </div>
-          <div className="text-xs text-muted-foreground">
+          <div className="text-xs text-muted-foreground grid gap-2 justify-items-start">
             <div className="font-mono">{t.slug}</div>
-            {busy === t.id && <div className="mt-1">...</div>}
+            {busy === t.id && <div>...</div>}
+            {isSuperAdmin && (
+              <button
+                onClick={() => remove(t)}
+                disabled={busy === t.id}
+                className="px-3 py-1.5 rounded-full text-xs font-bold bg-destructive/10 text-destructive hover:bg-destructive/20 transition disabled:opacity-50"
+              >
+                {ar ? "حذف القالب" : "Delete template"}
+              </button>
+            )}
           </div>
+
         </div>
       ))}
       <style>{`.input{width:100%;padding:.5rem .75rem;border-radius:.75rem;background:#fff;border:2px solid var(--color-border);font:inherit;outline:none}.input:focus{border-color:var(--color-primary)}`}</style>
