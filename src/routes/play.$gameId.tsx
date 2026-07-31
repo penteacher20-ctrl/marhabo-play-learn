@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Navbar } from "@/components/Navbar";
@@ -307,7 +307,12 @@ function PlayPage() {
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 border-b border-border bg-background/80 backdrop-blur">
           <div className="min-w-0">
             <h1 className="text-sm md:text-lg font-display font-extrabold truncate">{game.title}</h1>
-            {creator && <p className="hidden md:block text-xs text-muted-foreground truncate">بواسطة {creator}</p>}
+            {creator && (
+              <p className="hidden md:block text-xs text-muted-foreground truncate">
+                بواسطة{" "}
+                <Link to="/u/$userId" params={{ userId: game.user_id }} className="font-bold text-primary hover:underline">{creator}</Link>
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
             <label className="hidden md:inline text-xs text-muted-foreground">المقاس:</label>

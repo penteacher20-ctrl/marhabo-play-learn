@@ -164,22 +164,30 @@ function CommunityCard({ g, idx }: { g: CommunityGame; idx: number }) {
   const color = COLORS[idx % COLORS.length];
   const authorName = g.profiles?.name || (lang === "ar" ? "عضو" : "member");
   return (
-    <Link to="/play/$gameId" params={{ gameId: g.id }} className="card-pop overflow-hidden flex flex-col group hover:-translate-y-1 transition-transform">
-      <div
-        className="aspect-video grid place-items-center text-5xl relative overflow-hidden"
-        style={g.thumbnail_url ? { backgroundImage: `url(${g.thumbnail_url})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: color }}
-      >
-        {!g.thumbnail_url && <span className="text-white drop-shadow-lg">🎮</span>}
-        <span className="absolute top-2 end-2 px-2 py-0.5 rounded-full bg-black/40 text-white text-xs font-bold backdrop-blur">👁 {g.play_count}</span>
-      </div>
+    <div className="card-pop overflow-hidden flex flex-col group hover:-translate-y-1 transition-transform">
+      <Link to="/play/$gameId" params={{ gameId: g.id }} className="block">
+        <div
+          className="aspect-video grid place-items-center text-5xl relative overflow-hidden"
+          style={g.thumbnail_url ? { backgroundImage: `url(${g.thumbnail_url})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: color }}
+        >
+          {!g.thumbnail_url && <span className="text-white drop-shadow-lg">🎮</span>}
+          <span className="absolute top-2 end-2 px-2 py-0.5 rounded-full bg-black/40 text-white text-xs font-bold backdrop-blur">👁 {g.play_count}</span>
+        </div>
+      </Link>
       <div className="p-4 flex-1 flex flex-col">
-        <h3 className="font-display font-extrabold text-base line-clamp-1">{g.title}</h3>
-        <p className="text-xs text-muted-foreground mt-1">{tr("by")} {authorName}</p>
+        <Link to="/play/$gameId" params={{ gameId: g.id }}>
+          <h3 className="font-display font-extrabold text-base line-clamp-1">{g.title}</h3>
+        </Link>
+        <p className="text-xs text-muted-foreground mt-1">
+          {tr("by")}{" "}
+          <Link to="/u/$userId" params={{ userId: g.user_id }} className="font-bold hover:underline" style={{ color }}>{authorName}</Link>
+        </p>
         {g.description && <p className="text-xs text-foreground/70 mt-2 line-clamp-2">{g.description}</p>}
-        <span className="mt-3 inline-block text-center px-3 py-1.5 rounded-full text-xs font-bold text-white" style={{ background: color }}>▶ {tr("play_now")}</span>
+        <Link to="/play/$gameId" params={{ gameId: g.id }} className="mt-3 inline-block text-center px-3 py-1.5 rounded-full text-xs font-bold text-white" style={{ background: color }}>▶ {tr("play_now")}</Link>
       </div>
-    </Link>
+    </div>
   );
+
 }
 
 function Step({ n, color, title, desc, icon }: { n: number; color: string; title: string; desc: string; icon: string }) {
