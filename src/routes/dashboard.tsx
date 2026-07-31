@@ -31,11 +31,17 @@ function Dashboard() {
 
   const remove = async (id: string) => {
     if (!confirm("حذف اللعبة؟")) return;
-    const { error } = await supabase.from("games").delete().eq("id", id);
+    const { data, error } = await supabase.from("games").delete().eq("id", id).select("id");
     if (error) { toast.error(error.message); return; }
+    if (!data || data.length === 0) {
+      toast.error("لم يتم الحذف: هذه اللعبة ليست في حسابك الحالي. سجّل الدخول بالحساب الذي أنشأها.");
+      load();
+      return;
+    }
     toast.success("تم الحذف");
     setGames(games.filter(g => g.id !== id));
   };
+
 
   const totalPlays = games.reduce((s, g) => s + g.play_count, 0);
 
