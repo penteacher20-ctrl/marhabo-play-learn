@@ -4,6 +4,7 @@ import { I18nProvider } from "@/lib/i18n";
 import { AuthProvider } from "@/lib/auth";
 import { Toaster } from "@/components/ui/sonner";
 import { SiteSettingsProvider } from "@/lib/site-settings";
+import { MotionProvider } from "@/lib/motion";
 
 function NotFoundComponent() {
   return (
