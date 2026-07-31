@@ -1,10 +1,12 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { LogIn, LogOut } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { useRoles } from "@/lib/roles";
 import { AdminNotifications } from "@/components/AdminNotifications";
 import { useSiteSettings } from "@/lib/site-settings";
+import { supabase } from "@/integrations/supabase/client";
 
 export function Navbar() {
   const { tr, lang, setLang } = useI18n();
@@ -12,6 +14,14 @@ export function Navbar() {
   const { isAdmin } = useRoles();
   const { settings } = useSiteSettings();
   const navigate = useNavigate();
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) { setAvatarUrl(null); return; }
+    supabase.from("profiles").select("avatar_url").eq("id", user.id).maybeSingle().then(({ data }) => {
+      setAvatarUrl((data as any)?.avatar_url ?? null);
+    });
+  }, [user]);
 
   return (
     <header className="sticky top-0 z-40 backdrop-blur-md bg-background/70 border-b border-border/60">
@@ -50,13 +60,22 @@ export function Navbar() {
             {lang === "ar" ? "EN" : "ع"}
           </button>
           {user ? (
-            <button
-              onClick={() => signOut()}
-              className="group inline-flex items-center gap-2 rounded-full bg-white/80 hover:bg-white text-foreground border border-border/60 px-4 py-2 text-sm font-bold shadow-sm hover:shadow-md transition-all"
-            >
-              <LogOut className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-              <span className="hidden sm:inline">{tr("nav_logout")}</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <Link to="/dashboard" className="w-8 h-8 sm:w-9 sm:h-9 rounded-full overflow-hidden border-2 border-border/60 hover:border-primary transition" title={tr("nav_dashboard")}>
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full grid place-items-center text-sm text-white" style={{ background: "var(--gradient-primary)" }}>🦊</div>
+                )}
+              </Link>
+              <button
+                onClick={() => signOut()}
+                className="group inline-flex items-center gap-2 rounded-full bg-white/80 hover:bg-white text-foreground border border-border/60 px-4 py-2 text-sm font-bold shadow-sm hover:shadow-md transition-all"
+              >
+                <LogOut className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                <span className="hidden sm:inline">{tr("nav_logout")}</span>
+              </button>
+            </div>
           ) : (
             <button
               onClick={() => navigate({ to: "/auth" })}
