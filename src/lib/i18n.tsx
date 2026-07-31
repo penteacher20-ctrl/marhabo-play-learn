@@ -83,6 +83,13 @@ export const t: Dict = {
   cancel: { ar: "إلغاء", en: "Cancel" },
   search: { ar: "بحث...", en: "Search..." },
   all: { ar: "الكل", en: "All" },
+  profile: { ar: "الملف الشخصي", en: "Profile" },
+  avatar: { ar: "صورة البروفايل", en: "Profile picture" },
+  change_avatar: { ar: "تغيير الصورة", en: "Change picture" },
+  avatar_upload_hint: { ar: "اختر صورة شخصية. يُفضّل أن تكون مربّعة (1:1) لأفضل عرض.", en: "Choose a profile picture. Square (1:1) is recommended for best display." },
+  avatar_updated: { ar: "تم تحديث صورة البروفايل ✅", en: "Profile picture updated ✅" },
+  avatar_failed: { ar: "تعذّر تحديث الصورة", en: "Could not update picture" },
+  uploading: { ar: "جارٍ الرفع...", en: "Uploading..." },
 };
 
 interface Ctx { lang: Lang; setLang: (l: Lang) => void; tr: (k: keyof typeof t) => string; }
