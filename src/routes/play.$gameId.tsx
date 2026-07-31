@@ -5,6 +5,7 @@ import { Navbar } from "@/components/Navbar";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { generateColoring, generatePuzzle, generateMatching, generateWheel, generateQuiz, generateBlanks, generateTower, type TowerQuestion } from "@/lib/templates";
+import { useEmbed, useEmbedFullBleed } from "@/lib/embed";
 
 export const Route = createFileRoute("/play/$gameId")({ component: PlayPage });
 
