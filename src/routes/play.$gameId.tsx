@@ -44,95 +44,38 @@ function extractTitle(html: string, fallback: string): string {
 function ResponsiveEmbed({
   url,
   title,
-  isFullscreen,
   iframeRef,
   onError,
 }: {
   url: string;
   title: string;
-  isFullscreen: boolean;
   iframeRef: React.RefObject<HTMLIFrameElement | null>;
   onError: () => void;
 }) {
-  const hostRef = useRef<HTMLDivElement>(null);
-  const [box, setBox] = useState({ w: 0, h: 0 });
-
-  useEffect(() => {
-    const el = hostRef.current;
-    if (!el) return;
-    const update = () => setBox({ w: el.clientWidth, h: el.clientHeight });
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    window.addEventListener("orientationchange", update);
-    return () => { ro.disconnect(); window.removeEventListener("orientationchange", update); };
-  }, []);
-
-  // Parse sizing preferences from the URL hash (#lv=size=...&w=...&h=...&ar=...)
+  // Older saved links may include obsolete player sizing metadata. External
+  // pages must receive the full available viewport so their own responsive
+  // layout and scrolling work correctly on phones and tablets.
   let src = url;
-  let size = "";
-  let ar = "16/10";
-  let fixedW = 0;
-  let fixedH = 0;
   try {
     const u = new URL(url);
     const raw = u.hash.startsWith("#") ? u.hash.slice(1) : u.hash;
     if (raw.startsWith("lv=")) {
-      const p = new URLSearchParams(raw.slice(3));
-      size = p.get("size") || "";
-      ar = p.get("ar") || ar;
-      fixedW = parseInt((p.get("w") || "").replace(/[^\d]/g, ""), 10) || 0;
-      fixedH = parseInt((p.get("h") || "").replace(/[^\d]/g, ""), 10) || 0;
       u.hash = "";
       src = u.toString();
     }
   } catch { /* keep defaults */ }
 
-  const frame = (style: React.CSSProperties) => (
-    <iframe
-      ref={iframeRef}
-      src={src}
-      title={title}
-      className="block border-0"
-      style={style}
-      allowFullScreen
-      allow="autoplay; fullscreen; encrypted-media; gyroscope; picture-in-picture"
-      onError={onError}
-    />
-  );
-
-  // Fullscreen or no explicit sizing → fill the whole area
-  if (isFullscreen || (size !== "fixed" && size !== "responsive")) {
-    return (
-      <div ref={hostRef} className="absolute inset-0">
-        {frame({ width: "100%", height: "100%" })}
-      </div>
-    );
-  }
-
-  if (size === "responsive") {
-    const [arW, arH] = ar.split("/").map((n) => parseFloat(n) || 1);
-    // Never exceed the available height: shrink width when the ratio is too tall
-    const maxW = box.h > 0 ? Math.min(box.w, (box.h * arW) / arH) : box.w;
-    return (
-      <div ref={hostRef} className="absolute inset-0 grid place-items-center p-1 sm:p-3">
-        {frame({ width: maxW ? `${Math.floor(maxW)}px` : "100%", maxWidth: "100%", aspectRatio: `${arW} / ${arH}`, height: "auto" })}
-      </div>
-    );
-  }
-
-  // Fixed size: scale down to fit both width and height, never scale up
-  const w = fixedW || 900;
-  const h = fixedH || 600;
-  const pad = 16;
-  const scale = box.w > 0 && box.h > 0 ? Math.min(1, (box.w - pad) / w, (box.h - pad) / h) : 1;
   return (
-    <div ref={hostRef} className="absolute inset-0 grid place-items-center overflow-hidden">
-      <div style={{ width: w * scale, height: h * scale }}>
-        <div style={{ width: w, height: h, transform: `scale(${scale})`, transformOrigin: "top left" }}>
-          {frame({ width: `${w}px`, height: `${h}px` })}
-        </div>
-      </div>
+    <div className="absolute inset-0 overflow-hidden bg-background">
+      <iframe
+        ref={iframeRef}
+        src={src}
+        title={title}
+        className="block size-full border-0"
+        allowFullScreen
+        allow="autoplay; fullscreen; encrypted-media; gyroscope; picture-in-picture"
+        onError={onError}
+      />
     </div>
   );
 }
@@ -417,7 +360,6 @@ function PlayPage() {
           <ResponsiveEmbed
             url={game.file_url}
             title={game.title}
-            isFullscreen={isFullscreen}
             iframeRef={iframeRef}
             onError={() => setLoadError("فشل تحميل اللعبة المضمّنة")}
           />
