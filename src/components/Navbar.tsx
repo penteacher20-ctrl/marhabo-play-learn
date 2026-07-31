@@ -28,7 +28,6 @@ export function Navbar() {
         <nav className="hidden md:flex items-center gap-1 rounded-full bg-secondary/70 p-1.5">
           <NavItem to="/" label={tr("nav_home")} />
           <NavItem to="/templates" label={tr("nav_templates")} />
-          <NavItem to="/upload" label={tr("nav_upload")} />
           {user && <NavItem to="/dashboard" label={tr("nav_dashboard")} />}
           {user && <NavItem to="/suggestions" label={tr("nav_suggestions")} />}
           {isAdmin && <NavItem to="/admin" label={lang === "ar" ? "الإدارة" : "Admin"} />}
