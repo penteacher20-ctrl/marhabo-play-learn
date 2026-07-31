@@ -52,6 +52,10 @@ function PlayPage() {
   const [fit, setFit] = useState<FitMode>("auto");
   const wrapRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const embed = useEmbed();
+  useEmbedFullBleed(embed);
+  const chromeHidden = isFullscreen || embed;
+
 
   useEffect(() => {
 
