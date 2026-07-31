@@ -4,6 +4,9 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Share2, Check } from "lucide-react";
+
 
 export const Route = createFileRoute("/u/$userId")({
   component: PublicProfile,
@@ -54,6 +57,34 @@ function PublicProfile() {
 
   const name = profile?.name || (lang === "ar" ? "عضو" : "member");
   const plays = games.reduce((s, g) => s + (g.play_count || 0), 0);
+  const [copied, setCopied] = useState(false);
+
+  const share = async () => {
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    try {
+      if (typeof navigator !== "undefined" && (navigator as any).share) {
+        await (navigator as any).share({ title: name, url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast.success(lang === "ar" ? "تم نسخ رابط البروفايل!" : "Profile link copied!");
+    } catch {
+      toast.error(lang === "ar" ? "تعذّر نسخ الرابط" : "Could not copy link");
+    }
+  };
+
+  const stats = [
+    { label: lang === "ar" ? "ألعاب عامة" : "Public games", value: games.length, emoji: "🎮", color: "var(--purple-fun)" },
+    { label: lang === "ar" ? "إجمالي مرات اللعب" : "Total plays", value: plays, emoji: "👁", color: "var(--cyan-fun)" },
+    {
+      label: lang === "ar" ? "متوسط اللعب" : "Avg. plays",
+      value: games.length ? Math.round(plays / games.length) : 0,
+      emoji: "⭐",
+      color: "var(--coral)",
+    },
+  ];
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--gradient-hero)" }}>
@@ -73,7 +104,28 @@ function PublicProfile() {
                 : `${games.length} public games · ${plays} plays`}
             </p>
           </div>
+          <button
+            onClick={share}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold text-white shadow-lg hover:-translate-y-0.5 transition-transform"
+            style={{ background: "var(--gradient-primary)" }}
+          >
+            {copied ? <Check size={16} /> : <Share2 size={16} />}
+            {copied
+              ? lang === "ar" ? "تم النسخ!" : "Copied!"
+              : lang === "ar" ? "مشاركة البروفايل" : "Share profile"}
+          </button>
         </div>
+
+        <div className="mt-6 grid grid-cols-3 gap-3 sm:gap-5">
+          {stats.map((s) => (
+            <div key={s.label} className="card-pop p-4 sm:p-5 text-center">
+              <div className="text-2xl sm:text-3xl">{s.emoji}</div>
+              <div className="mt-1 text-2xl sm:text-3xl font-display font-black" style={{ color: s.color }}>{s.value}</div>
+              <div className="text-[11px] sm:text-xs text-muted-foreground mt-1 leading-tight">{s.label}</div>
+            </div>
+          ))}
+        </div>
+
 
         <h2 className="mt-10 mb-5 text-2xl font-display font-extrabold">
           {lang === "ar" ? "الألعاب العامة" : "Public games"}
