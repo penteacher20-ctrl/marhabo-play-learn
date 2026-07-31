@@ -247,9 +247,18 @@ function EditGame() {
           <Field label={tr("game_title")}><input value={title} onChange={(e) => setTitle(e.target.value)} className="input" /></Field>
           <Field label={tr("game_desc")}><textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} className="input" /></Field>
           <Field label={tr("thumbnail")}>
-            {thumbUrl && <img src={thumbUrl} alt="" className="w-32 h-20 object-cover rounded-xl mb-2" />}
-            <input type="file" accept="image/*" onChange={(e) => setNewThumb(e.target.files?.[0] ?? null)} className="text-sm" />
+            {thumbUrl && <img src={thumbUrl} alt="" className="w-56 sm:w-72 aspect-video object-cover rounded-xl mb-2 border-2 border-border" />}
+            <input type="file" accept="image/png,image/jpeg,image/jpg,image/webp" onChange={(e) => setNewThumb(e.target.files?.[0] ?? null)} className="text-sm" />
+            <p className="text-xs text-muted-foreground mt-1.5">
+              📐 الأبعاد المُوصى بها: <strong>16:9</strong> مثل <strong>1280×720</strong> أو <strong>640×360</strong> بكسل. سيتم عرضها في بطاقات اللعبة بنسبة 16:9.
+            </p>
+            {newThumb && (
+              <div className="mt-2 aspect-video rounded-2xl overflow-hidden border-2 border-border bg-secondary w-56 sm:w-72">
+                <img src={URL.createObjectURL(newThumb)} alt="معاينة الصورة الجديدة" className="w-full h-full object-cover" />
+              </div>
+            )}
           </Field>
+
 
           {isPuzzle && (
             <div className="rounded-2xl border-2 border-dashed border-primary/40 p-4 space-y-3 bg-primary/5">

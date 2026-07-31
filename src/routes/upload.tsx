@@ -66,6 +66,8 @@ function UploadPage() {
   const [embedHeight, setEmbedHeight] = useState("600");
   const [embedAspect, setEmbedAspect] = useState("16/10");
   const [thumb, setThumb] = useState<File | null>(null);
+  const [thumbPreview, setThumbPreview] = useState<string | null>(null);
+
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
   const [isPublic, setIsPublic] = useState(true);
@@ -438,8 +440,27 @@ function UploadPage() {
               <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} className="input" maxLength={1000} />
             </Field>
             <Field label={tr("thumbnail")}>
-              <input type="file" accept="image/*" onChange={(e) => setThumb(e.target.files?.[0] ?? null)} className="text-sm" />
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/jpg,image/webp"
+                onChange={(e) => {
+                  const f = e.target.files?.[0] ?? null;
+                  setThumb(f);
+                  if (f) setThumbPreview(URL.createObjectURL(f));
+                  else setThumbPreview(null);
+                }}
+                className="text-sm"
+              />
+              <p className="text-xs text-muted-foreground mt-1.5">
+                📐 الأبعاد المُوصى بها: <strong>16:9</strong> مثل <strong>1280×720</strong> أو <strong>640×360</strong> بكسل. سيتم عرضها في بطاقات اللعبة بنفس نسبة العرض. الحدّ الأقصى 8MB.
+              </p>
+              {thumbPreview && (
+                <div className="mt-2 aspect-video rounded-2xl overflow-hidden border-2 border-border bg-secondary w-56 sm:w-72">
+                  <img src={thumbPreview} alt="معاينة الصورة المصغرة" className="w-full h-full object-cover" />
+                </div>
+              )}
             </Field>
+
 
             <div className="flex items-center justify-between bg-secondary/50 rounded-2xl px-4 py-3">
               <span className="font-bold">{tr("privacy")}</span>
