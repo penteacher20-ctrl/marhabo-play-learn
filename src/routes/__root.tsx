@@ -60,6 +60,7 @@ function RootComponent() {
     <AuthProvider>
       <SiteSettingsProvider>
         <I18nProvider>
+          <EmbedModeEffect />
           <Outlet />
           <Toaster position="top-center" richColors />
         </I18nProvider>
