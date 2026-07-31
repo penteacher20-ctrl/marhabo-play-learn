@@ -156,37 +156,3 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
   0%,100% { transform: rotate(-3deg); }
   50% { transform: rotate(3deg); }
 }
-
-/* ── Embed mode (site rendered inside an iframe or ?embed=1) ───────────── */
-html.lov-embed body {
-  touch-action: manipulation;
-  overscroll-behavior: none;
-}
-/* Full-width content, no large side gutters while embedded */
-html.lov-embed .container {
-  max-width: 100% !important;
-  padding-inline: 0.75rem !important;
-}
-/* Full-bleed embedded game player: no page scrolling at all */
-html.lov-embed-full,
-html.lov-embed-full body {
-  overflow: hidden !important;
-  height: 100% !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  touch-action: manipulation;
-  overscroll-behavior: none;
-}
-html.lov-embed-full .lov-embed-stage {
-  width: 100vw;
-  height: 100dvh;
-  margin: 0;
-  padding: 0;
-}
-html.lov-embed-full .lov-embed-stage > iframe {
-  width: 100vw !important;
-  height: 100dvh !important;
-  min-height: 0 !important;
-  border: 0;
-  display: block;
-}

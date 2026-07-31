@@ -5,7 +5,6 @@ import { useAuth } from "@/lib/auth";
 import { useRoles } from "@/lib/roles";
 import { AdminNotifications } from "@/components/AdminNotifications";
 import { useSiteSettings } from "@/lib/site-settings";
-import { useEmbed } from "@/lib/embed";
 
 export function Navbar() {
   const { tr, lang, setLang } = useI18n();
@@ -13,20 +12,18 @@ export function Navbar() {
   const { isAdmin } = useRoles();
   const { settings } = useSiteSettings();
   const navigate = useNavigate();
-  const embed = useEmbed();
 
   return (
     <header className="sticky top-0 z-40 backdrop-blur-md bg-background/70 border-b border-border/60">
-      <div className={`container mx-auto flex items-center justify-between gap-4 ${embed ? "px-2 h-11" : "px-4 h-16"}`}>
+      <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4">
         <Link to="/" className="flex items-center gap-2 group">
           {settings.logo_url ? (
-            <img src={settings.logo_url} alt={tr("brand")} className={`rounded-2xl object-cover ${embed ? "w-7 h-7" : "w-9 h-9"}`} />
+            <img src={settings.logo_url} alt={tr("brand")} className="w-9 h-9 rounded-2xl object-cover" />
           ) : (
-            <span className={`rounded-2xl grid place-items-center text-white font-black ${embed ? "w-7 h-7 text-sm" : "w-9 h-9 text-lg"}`} style={{ background: "var(--gradient-primary)" }}>م</span>
+            <span className="w-9 h-9 rounded-2xl grid place-items-center text-white font-black text-lg" style={{ background: "var(--gradient-primary)" }}>م</span>
           )}
-          <span className={`font-display font-extrabold text-primary ${embed ? "text-base" : "text-xl"}`}>{tr("brand")}</span>
+          <span className="font-display text-xl font-extrabold text-primary">{tr("brand")}</span>
         </Link>
-
 
         <nav className="hidden md:flex items-center gap-1 rounded-full bg-secondary/70 p-1.5">
           <NavItem to="/" label={tr("nav_home")} />
