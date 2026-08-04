@@ -224,104 +224,171 @@ export function generateWheel(c: WheelConfig): string {
 
 export interface PuzzleConfig { title: string; imageUrl: string; rows: number; cols: number; }
 export function generatePuzzle(c: PuzzleConfig): string {
-  return baseHead(c.title) + `
+  return baseHead(c.title) + embedConfig('puzzle', c) + `
   <style>
-    body{padding:0!important;background:linear-gradient(135deg,#fef3ff,#eef2ff)!important}
+    body{padding:0!important;background:
+      radial-gradient(1200px 600px at 15% -10%, #efe4ff, transparent 60%),
+      radial-gradient(1000px 500px at 90% 0%, #dff3ff, transparent 60%),
+      linear-gradient(160deg,#f7f4ff,#eef4ff 60%,#ffffff)!important}
     .card{display:contents!important}
-    .pz-app{min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:14px;gap:12px;box-sizing:border-box}
-    .pz-head{width:100%;max-width:1100px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-    .pz-head h1{margin:0;font-size:clamp(1.1rem,2.4vw,1.6rem);color:#7a4fd6}
-    .pz-head .hint{font-size:.85rem;color:#666}
-    .pz-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    .pz-toolbar button{border:none;border-radius:999px;padding:8px 16px;font-weight:800;cursor:pointer;color:#fff;background:linear-gradient(135deg,#9A73E8,#6D5BFF);box-shadow:0 4px 12px rgba(109,91,255,.3)}
-    .pz-toolbar select{border:2px solid #d8cdf6;border-radius:999px;padding:6px 12px;background:#fff;font-weight:700;color:#7a4fd6}
-    .pz-main{display:grid;grid-template-columns:auto 220px;gap:18px;align-items:start;width:100%;max-width:1100px}
-    @media(max-width:820px){.pz-main{grid-template-columns:1fr}}
+    .pz-app{min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:clamp(10px,2vw,20px);gap:14px;box-sizing:border-box}
+    .pz-head{width:100%;max-width:1120px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+      background:rgba(255,255,255,.72);backdrop-filter:blur(10px);border:1px solid #ece5fb;border-radius:22px;padding:12px 16px;box-shadow:0 10px 28px -18px rgba(80,50,160,.45)}
+    .pz-title{display:flex;align-items:center;gap:10px;min-width:0}
+    .pz-title .badge{width:38px;height:38px;border-radius:14px;display:grid;place-items:center;font-size:1.1rem;background:linear-gradient(135deg,#9A73E8,#6D5BFF);box-shadow:0 6px 16px -6px rgba(109,91,255,.8)}
+    .pz-head h1{margin:0;font-size:clamp(1rem,2.2vw,1.45rem);color:#4b2f8f;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .pz-stats{display:flex;gap:8px;flex-wrap:wrap}
+    .chip{display:inline-flex;align-items:center;gap:6px;background:#f6f2ff;border:1px solid #e6dcfb;color:#5b3fa8;font-weight:800;font-size:.82rem;border-radius:999px;padding:6px 12px}
+    .chip b{font-variant-numeric:tabular-nums;color:#2f1c63}
+    .pz-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:center}
+    .pz-toolbar button{border:none;border-radius:999px;padding:9px 16px;font:inherit;font-weight:800;font-size:.9rem;cursor:pointer;color:#fff;
+      background:linear-gradient(135deg,#9A73E8,#6D5BFF);box-shadow:0 8px 18px -10px rgba(109,91,255,.9);transition:transform .12s,box-shadow .12s,filter .12s}
+    .pz-toolbar button:hover{transform:translateY(-2px);filter:brightness(1.05)}
+    .pz-toolbar button:active{transform:translateY(1px)}
+    .pz-toolbar button.ghost{background:#fff;color:#5b3fa8;border:2px solid #e2d7fb;box-shadow:none}
+    .pz-toolbar button.warm{background:linear-gradient(135deg,#FFB347,#FF8A65)}
+    .pz-toolbar select{font:inherit;border:2px solid #e2d7fb;border-radius:999px;padding:7px 14px;background:#fff;font-weight:800;color:#5b3fa8;cursor:pointer}
+    .pz-main{display:grid;grid-template-columns:minmax(0,1fr) 236px;gap:18px;align-items:start;width:100%;max-width:1120px}
+    @media(max-width:880px){.pz-main{grid-template-columns:1fr}.pz-side{order:-1;flex-direction:row!important;flex-wrap:wrap;justify-content:center}.pz-side .ref{width:120px!important;height:120px!important}}
     .pz-board-wrap{display:flex;flex-direction:column;gap:14px;align-items:center;min-width:0}
-    #board{position:relative;background:#faf7ff;border-radius:18px;border:3px dashed #b9a4f0;box-shadow:inset 0 4px 14px rgba(0,0,0,.05);touch-action:none}
-    #tray{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;padding:14px;background:#fff;border-radius:18px;border:2px solid #e6dffb;min-height:120px;width:100%;max-width:520px;box-sizing:border-box}
-    .pz-side{display:flex;flex-direction:column;align-items:center;gap:10px;background:#fff;border-radius:18px;padding:14px;border:2px solid #e6dffb;position:sticky;top:14px}
-    .pz-side .ref-label{font-size:.85rem;color:#7a4fd6;font-weight:800}
-    .pz-side .ref{width:190px;height:190px;border-radius:14px;object-fit:cover;background:#f5f0ff;border:2px solid #d8cdf6}
-    .pz-side .progress{font-size:.85rem;color:#666;font-weight:700}
-    .pz-side .bar{width:100%;height:8px;background:#eee;border-radius:99px;overflow:hidden}
-    .pz-side .bar>i{display:block;height:100%;width:0;background:linear-gradient(90deg,#9A73E8,#6D5BFF);transition:width .3s}
-    .pp{cursor:grab;user-select:none;-webkit-user-drag:none;touch-action:none;filter:drop-shadow(0 2px 0 rgba(0,0,0,.5)) drop-shadow(0 4px 6px rgba(0,0,0,.25));transition:transform .1s}
-    .pp:active{cursor:grabbing;transform:scale(1.05)}
-    .pp.placed{cursor:default;filter:none;pointer-events:none}
-    .pz-result{font-size:1.4rem;font-weight:900;color:#7a4fd6;text-align:center;min-height:1.5em}
+    .board-shell{position:relative;padding:10px;border-radius:26px;background:linear-gradient(135deg,rgba(154,115,232,.22),rgba(47,234,255,.18));box-shadow:0 24px 50px -30px rgba(60,30,120,.6)}
+    #board{position:relative;background:
+      linear-gradient(#fdfbff,#f7f2ff);border-radius:18px;border:2px solid #d9cbf7;
+      box-shadow:inset 0 6px 18px rgba(90,60,160,.10);touch-action:none;overflow:visible}
+    #ghost{position:absolute;inset:0;border-radius:16px;background-size:100% 100%;background-repeat:no-repeat;opacity:0;transition:opacity .25s;pointer-events:none}
+    #board.ghost-on #ghost{opacity:.18}
+    .slot{position:absolute;box-sizing:border-box;border:1px dashed rgba(154,115,232,.28);border-radius:4px}
+    #tray{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:center;padding:14px;background:rgba(255,255,255,.85);border-radius:22px;border:2px dashed #e0d5fa;min-height:118px;width:100%;max-width:min(100%,620px);box-sizing:border-box;box-shadow:0 12px 30px -24px rgba(80,50,160,.7)}
+    #tray:empty::after{content:'كل القطع في مكانها ✨';color:#a394c9;font-weight:800;font-size:.9rem}
+    .pz-side{display:flex;flex-direction:column;align-items:center;gap:12px;background:rgba(255,255,255,.85);backdrop-filter:blur(8px);border-radius:22px;padding:14px;border:1px solid #ece5fb;position:sticky;top:14px;box-shadow:0 14px 34px -26px rgba(80,50,160,.8)}
+    .pz-side .ref-label{font-size:.8rem;color:#6b4fbd;font-weight:800;letter-spacing:.02em}
+    .pz-side .ref{width:196px;height:196px;border-radius:16px;object-fit:cover;background:#f5f0ff;border:2px solid #e3d8fb;box-shadow:0 10px 24px -18px rgba(60,30,120,.9)}
+    .pz-side .meta{font-size:.8rem;color:#7b6ca0;font-weight:800}
+    .bar{width:100%;height:10px;background:#efe9fb;border-radius:99px;overflow:hidden}
+    .bar>i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#8EE870,#2FEAFF,#9A73E8);transition:width .35s ease}
+    .pp{cursor:grab;user-select:none;-webkit-user-drag:none;touch-action:none;filter:drop-shadow(0 3px 5px rgba(40,20,90,.32));transition:transform .12s,filter .2s}
+    .pp:hover{transform:translateY(-3px) scale(1.02)}
+    .pp.drag{cursor:grabbing;transform:scale(1.08) rotate(-1.5deg);filter:drop-shadow(0 14px 18px rgba(40,20,90,.4))}
+    .pp.placed{cursor:default;filter:none;pointer-events:none;transform:none}
+    @keyframes pop{0%{transform:scale(1.12)}60%{transform:scale(.97)}100%{transform:scale(1)}}
+    .pp.snap{animation:pop .28s ease-out}
+    .pz-result{font-size:1.05rem;font-weight:900;color:#5b3fa8;text-align:center;min-height:1.4em}
+    .win{position:fixed;inset:0;display:none;place-items:center;background:rgba(35,18,70,.55);backdrop-filter:blur(6px);z-index:50}
+    .win.on{display:grid}
+    .win-card{background:#fff;border-radius:28px;padding:26px 30px;max-width:min(92vw,380px);box-shadow:0 30px 70px -20px rgba(20,8,50,.7);animation:pop .35s ease-out}
+    .win-card h2{margin:0 0 6px;color:#4b2f8f;font-size:1.5rem}
+    .win-card p{margin:2px 0;color:#6b6390;font-weight:800;font-size:.95rem}
+    .win-card .big{font-size:2.6rem;margin-bottom:4px}
+    .win-card .row{display:flex;gap:8px;justify-content:center;margin-top:16px;flex-wrap:wrap}
+    canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:60}
   </style>
   <div class="pz-app">
     <div class="pz-head">
-      <h1>🧩 ${escapeHtml(c.title)}</h1>
+      <div class="pz-title"><span class="badge">🧩</span><h1>${escapeHtml(c.title)}</h1></div>
+      <div class="pz-stats">
+        <span class="chip">⏱ <b id="sTime">00:00</b></span>
+        <span class="chip">🧠 <b id="sMoves">0</b> حركة</span>
+        <span class="chip">🏆 <b id="sBest">—</b></span>
+      </div>
       <div class="pz-toolbar">
-        <label style="font-size:.8rem;color:#666;font-weight:700">الصعوبة:</label>
-        <select id="difficulty">
-          <option value="3">سهل (3×3)</option>
-          <option value="4" selected>متوسط (4×4)</option>
-          <option value="5">صعب (5×5)</option>
-          <option value="6">خبير (6×6)</option>
+        <select id="difficulty" title="مستوى الصعوبة">
+          <option value="3">سهل · 3×3</option>
+          <option value="4" selected>متوسط · 4×4</option>
+          <option value="5">صعب · 5×5</option>
+          <option value="6">خبير · 6×6</option>
         </select>
-        <button id="hint" style="background:linear-gradient(135deg,#FFB347,#FF8A65)">💡 تلميح</button>
-        <button id="reset">↺ خلط جديد</button>
+        <button id="peek" class="ghost" title="إظهار الصورة خلف اللوح">👁 مساعدة</button>
+        <button id="sound" class="ghost" title="الصوت">🔊</button>
+        <button id="hint" class="warm">💡 تلميح</button>
+        <button id="reset">↺ لعبة جديدة</button>
       </div>
     </div>
     <div class="pz-main">
       <div class="pz-board-wrap">
-        <div id="board"></div>
+        <div class="board-shell"><div id="board"><div id="ghost"></div></div></div>
         <div id="tray"></div>
         <div class="pz-result" id="res"></div>
       </div>
       <aside class="pz-side">
         <span class="ref-label">📷 الصورة المرجعية</span>
         <img id="refImg" class="ref" src="${c.imageUrl}" alt="reference" crossorigin="anonymous">
-        <div class="progress"><span id="progTxt">0 / 0</span></div>
+        <div class="meta"><span id="progTxt">0 / 0</span></div>
         <div class="bar"><i id="progBar"></i></div>
       </aside>
     </div>
   </div>
+  <div class="win" id="win"><div class="win-card">
+    <div class="big">🎉</div>
+    <h2>أحسنت! أكملت اللغز</h2>
+    <p id="winTime"></p>
+    <p id="winMoves"></p>
+    <p id="winBest" style="color:#c98a00"></p>
+    <div class="row">
+      <button id="winAgain" style="border:none;border-radius:999px;padding:11px 20px;font:inherit;font-weight:900;color:#fff;cursor:pointer;background:linear-gradient(135deg,#9A73E8,#6D5BFF)">↺ العب مرة أخرى</button>
+      <button id="winHarder" style="border:none;border-radius:999px;padding:11px 20px;font:inherit;font-weight:900;color:#5b3fa8;cursor:pointer;background:#f2ecff">⬆ مستوى أصعب</button>
+    </div>
+  </div></div>
+  <canvas id="fx"></canvas>
   <script>
     const SRC = ${JSON.stringify(c.imageUrl)};
     let ROWS=${c.rows||4}, COLS=${c.cols||4};
     const board=document.getElementById('board'), tray=document.getElementById('tray'), res=document.getElementById('res');
+    const ghost=document.getElementById('ghost');
     const progTxt=document.getElementById('progTxt'), progBar=document.getElementById('progBar');
     const diffSel=document.getElementById('difficulty');
+    const sTime=document.getElementById('sTime'), sMoves=document.getElementById('sMoves'), sBest=document.getElementById('sBest');
+    const winBox=document.getElementById('win');
     diffSel.value=String(ROWS);
+    ghost.style.backgroundImage='url("'+SRC+'")';
 
+    /* ---------- audio (tiny WebAudio blips, no assets) ---------- */
+    let soundOn=localStorage.getItem('pz_sound')!=='0', actx=null;
+    document.getElementById('sound').textContent=soundOn?'🔊':'🔇';
+    function beep(freq,dur,type){
+      if(!soundOn) return;
+      try{
+        actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+        const o=actx.createOscillator(), g=actx.createGain();
+        o.type=type||'sine'; o.frequency.value=freq;
+        g.gain.setValueAtTime(.0001,actx.currentTime);
+        g.gain.exponentialRampToValueAtTime(.16,actx.currentTime+.01);
+        g.gain.exponentialRampToValueAtTime(.0001,actx.currentTime+dur);
+        o.connect(g); g.connect(actx.destination); o.start(); o.stop(actx.currentTime+dur+.02);
+      }catch(_){}
+    }
+    const sndSnap=()=>{beep(660,.09);setTimeout(()=>beep(880,.1),70);};
+    const sndBack=()=>beep(220,.1,'triangle');
+    const sndWin=()=>{[523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,.18,'sine'),i*130));};
+    document.getElementById('sound').onclick=(e)=>{soundOn=!soundOn;localStorage.setItem('pz_sound',soundOn?'1':'0');e.currentTarget.textContent=soundOn?'🔊':'🔇';};
+
+    /* ---------- geometry ---------- */
     let SIZE=400, PW=0, PH=0, KNOB=0, PAD=0;
-    let hEdge=[], vEdge=[];
-    let imgReady=false;
+    let hEdge=[], vEdge=[], imgReady=false;
 
     function calcSize(){
-      const wrap=board.parentNode;
-      const avail=Math.min(wrap.clientWidth-4, window.innerHeight*0.65, 560);
-      SIZE=Math.max(260, Math.floor(avail));
+      const wrap=board.closest('.board-shell').parentNode;
+      const avail=Math.min(wrap.clientWidth-24, window.innerHeight*0.60, 580);
+      SIZE=Math.max(240, Math.floor(avail));
       PW=SIZE/COLS; PH=SIZE/ROWS;
       KNOB=Math.min(PW,PH)*0.18;
       PAD=Math.ceil(KNOB+6);
       board.style.width=SIZE+'px'; board.style.height=SIZE+'px';
     }
-
     function loadImage(){
       return new Promise((resolve)=>{
         const img=new Image();
-        img.onload=()=>{ imgReady=true; resolve(true); };
-        img.onerror=()=>{ imgReady=true; resolve(false); };
+        img.onload=()=>{imgReady=true;resolve(true);};
+        img.onerror=()=>{imgReady=true;resolve(false);};
         img.src=SRC;
       });
     }
-
     function genEdges(){
       hEdge=[]; vEdge=[];
       for(let r=0;r<=ROWS;r++){const row=[];for(let c=0;c<COLS;c++)row.push(r===0||r===ROWS?0:(Math.random()<0.5?1:-1));hEdge.push(row);}
       for(let r=0;r<ROWS;r++){const row=[];for(let c=0;c<=COLS;c++)row.push(c===0||c===COLS?0:(Math.random()<0.5?1:-1));vEdge.push(row);}
     }
-
     function piecePath(r,c){
       const w=PW,h=PH,k=KNOB;
-      // Shared edges must be complementary: one side protrudes while the
-      // neighbouring side cuts inward. The stored sign describes the edge
-      // from the top/left piece perspective; top/left faces invert it.
       const top=-hEdge[r][c],right=vEdge[r][c+1],bottom=hEdge[r+1][c],left=-vEdge[r][c];
       const x0=PAD,y0=PAD;
       let d='M '+x0+' '+y0;
@@ -335,77 +402,71 @@ export function generatePuzzle(c: PuzzleConfig): string {
       else{const m=y0+h/2,dir=left;d+=' L '+x0+' '+(m+k)+' C '+(x0-2*k*dir)+' '+(m+k)+' '+(x0-2*k*dir)+' '+(m-k)+' '+x0+' '+(m-k)+' L '+x0+' '+y0;}
       return d+' Z';
     }
-
-    // Use CSS background-image + SVG clip-path. Each piece is a div sized W×H
-    // with the FULL puzzle image as background, positioned so the (r,c) cell
-    // lands at (PAD,PAD). Then an inline <svg> clipPath cuts the jigsaw shape.
     function makePieceEl(r,c){
       const W=PW+PAD*2, H=PH+PAD*2;
       const d=piecePath(r,c);
       const clipId='clip_'+r+'_'+c+'_'+Math.random().toString(36).slice(2,7);
       const wrap=document.createElement('div');
       wrap.className='pp';
-      wrap.dataset.idx=r*COLS+c;
-      wrap.dataset.r=r; wrap.dataset.c=c;
+      wrap.dataset.idx=r*COLS+c; wrap.dataset.r=r; wrap.dataset.c=c;
       wrap.style.cssText='position:relative;width:'+W+'px;height:'+H+'px';
-
-      // background layer (clipped)
       const bg=document.createElement('div');
       bg.style.cssText='position:absolute;inset:0;background-image:url("'+SRC+'");background-repeat:no-repeat;background-size:'+SIZE+'px '+SIZE+'px;background-position:'+(PAD-c*PW)+'px '+(PAD-r*PH)+'px;clip-path:url(#'+clipId+');-webkit-clip-path:url(#'+clipId+')';
       wrap.appendChild(bg);
-
-      // SVG with clipPath def + outline stroke on top
-      const svgNs='http://www.w3.org/2000/svg';
-      const svg=document.createElementNS(svgNs,'svg');
-      svg.setAttribute('width',W); svg.setAttribute('height',H);
-      svg.setAttribute('viewBox','0 0 '+W+' '+H);
+      const ns='http://www.w3.org/2000/svg';
+      const svg=document.createElementNS(ns,'svg');
+      svg.setAttribute('width',W); svg.setAttribute('height',H); svg.setAttribute('viewBox','0 0 '+W+' '+H);
       svg.style.cssText='position:absolute;inset:0;pointer-events:none;overflow:visible';
-      const defs=document.createElementNS(svgNs,'defs');
-      const cp=document.createElementNS(svgNs,'clipPath');
-      cp.setAttribute('id',clipId);
-      cp.setAttribute('clipPathUnits','userSpaceOnUse');
-      const cpPath=document.createElementNS(svgNs,'path');
-      cpPath.setAttribute('d',d);
+      const defs=document.createElementNS(ns,'defs');
+      const cp=document.createElementNS(ns,'clipPath');
+      cp.setAttribute('id',clipId); cp.setAttribute('clipPathUnits','userSpaceOnUse');
+      const cpPath=document.createElementNS(ns,'path'); cpPath.setAttribute('d',d);
       cp.appendChild(cpPath); defs.appendChild(cp); svg.appendChild(defs);
-      // Cartoon-style double outline: bold black + crisp white inner highlight.
-      const outline=document.createElementNS(svgNs,'path');
-      outline.setAttribute('d',d);
-      outline.setAttribute('fill','none');
-      outline.setAttribute('stroke','#111');
-      outline.setAttribute('stroke-width','2.2');
-      outline.setAttribute('stroke-linejoin','round');
-      outline.setAttribute('stroke-linecap','round');
+      const outline=document.createElementNS(ns,'path');
+      outline.setAttribute('d',d); outline.setAttribute('fill','none');
+      outline.setAttribute('stroke','rgba(35,15,70,.55)'); outline.setAttribute('stroke-width','1.4');
+      outline.setAttribute('stroke-linejoin','round'); outline.setAttribute('stroke-linecap','round');
       svg.appendChild(outline);
-      const inner=document.createElementNS(svgNs,'path');
-      inner.setAttribute('d',d);
-      inner.setAttribute('fill','none');
-      inner.setAttribute('stroke','#fff');
-      inner.setAttribute('stroke-width','1');
-      inner.setAttribute('stroke-linejoin','round');
-      inner.setAttribute('stroke-opacity','.85');
+      const inner=document.createElementNS(ns,'path');
+      inner.setAttribute('d',d); inner.setAttribute('fill','none');
+      inner.setAttribute('stroke','#fff'); inner.setAttribute('stroke-width','1');
+      inner.setAttribute('stroke-linejoin','round'); inner.setAttribute('stroke-opacity','.6');
       svg.appendChild(inner);
       wrap.appendChild(svg);
       return wrap;
     }
 
-    let placed=0, total=0, pieces=[];
+    /* ---------- state ---------- */
+    let placed=0, total=0, pieces=[], moves=0, startedAt=0, timerId=null, finished=false;
+    function bestKey(){ return 'pz_best_'+ROWS+'x'+COLS; }
+    function fmt(ms){ const s=Math.floor(ms/1000); return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+    function showBest(){ const b=localStorage.getItem(bestKey()); sBest.textContent=b?fmt(+b):'—'; }
+    function startTimer(){
+      clearInterval(timerId); startedAt=Date.now();
+      timerId=setInterval(()=>{ if(!finished) sTime.textContent=fmt(Date.now()-startedAt); },500);
+      sTime.textContent='00:00';
+    }
     function updateProgress(){
       progTxt.textContent=placed+' / '+total;
       progBar.style.width=(total?placed/total*100:0)+'%';
+      sMoves.textContent=String(moves);
     }
 
     async function build(){
       ROWS=COLS=parseInt(diffSel.value,10)||4;
-      total=ROWS*COLS; placed=0; res.textContent=''; updateProgress();
-      board.innerHTML=''; tray.innerHTML=''; pieces=[];
+      total=ROWS*COLS; placed=0; moves=0; finished=false;
+      res.textContent='اسحب القطع إلى مكانها الصحيح على اللوح';
+      winBox.classList.remove('on');
+      board.querySelectorAll('.slot,.pp').forEach(n=>n.remove());
+      tray.innerHTML=''; pieces=[];
       calcSize();
       if(!imgReady) await loadImage();
-      genEdges();
-      // slots
+      genEdges(); showBest(); updateProgress(); startTimer();
       for(let r=0;r<ROWS;r++) for(let cc=0;cc<COLS;cc++){
         const slot=document.createElement('div');
-        slot.dataset.idx=r*COLS+cc;
-        slot.style.cssText='position:absolute;left:'+(cc*PW)+'px;top:'+(r*PH)+'px;width:'+PW+'px;height:'+PH+'px;border:1px dashed rgba(154,115,232,.35);box-sizing:border-box';
+        slot.className='slot'; slot.dataset.idx=r*COLS+cc;
+        slot.style.left=(cc*PW)+'px'; slot.style.top=(r*PH)+'px';
+        slot.style.width=PW+'px'; slot.style.height=PH+'px';
         board.appendChild(slot);
       }
       const list=[]; for(let r=0;r<ROWS;r++) for(let cc=0;cc<COLS;cc++) list.push({r,c:cc});
@@ -414,50 +475,77 @@ export function generatePuzzle(c: PuzzleConfig): string {
         const el=makePieceEl(p.r,p.c);
         el.style.margin=(-PAD)+'px';
         attachDrag(el,p);
-        tray.appendChild(el);
-        pieces.push(el);
+        tray.appendChild(el); pieces.push(el);
       });
+    }
+
+    function place(el,r,c,silent){
+      board.appendChild(el);
+      el.style.margin='0'; el.style.position='absolute';
+      el.style.left=(c*PW-PAD)+'px'; el.style.top=(r*PH-PAD)+'px';
+      el.style.zIndex='10';
+      el.classList.remove('drag'); el.classList.add('placed','snap');
+      setTimeout(()=>el.classList.remove('snap'),320);
+      placed++; updateProgress();
+      if(!silent) sndSnap();
+      if(placed===total) finish();
+    }
+
+    function finish(){
+      finished=true; clearInterval(timerId);
+      const ms=Date.now()-startedAt;
+      sTime.textContent=fmt(ms);
+      board.classList.remove('ghost-on');
+      const prev=localStorage.getItem(bestKey());
+      const isBest=!prev||ms<+prev;
+      if(isBest) localStorage.setItem(bestKey(),String(ms));
+      showBest();
+      document.getElementById('winTime').textContent='الزمن: '+fmt(ms);
+      document.getElementById('winMoves').textContent='عدد الحركات: '+moves;
+      document.getElementById('winBest').textContent=isBest?'🥇 رقم قياسي جديد!':'';
+      res.textContent='🎉 أحسنت! أكملت اللغز';
+      winBox.classList.add('on');
+      sndWin(); confetti();
     }
 
     function attachDrag(el,p){
       let dragging=false, ox=0, oy=0;
-      const W=PW+PAD*2, H=PH+PAD*2;
       const start=(cx,cy,e)=>{
         if(el.classList.contains('placed')) return;
         const r=el.getBoundingClientRect();
         ox=cx-r.left; oy=cy-r.top;
         document.body.appendChild(el);
-        el.style.margin='0';
-        el.style.position='fixed';
-        el.style.left=(cx-ox)+'px'; el.style.top=(cy-oy)+'px';
-        el.style.zIndex='9999';
+        el.style.margin='0'; el.style.position='fixed';
+        el.style.left=(cx-ox)+'px'; el.style.top=(cy-oy)+'px'; el.style.zIndex='9999';
+        el.classList.add('drag');
         dragging=true;
         try{el.setPointerCapture(e.pointerId);}catch(_){}
       };
-      const move=(cx,cy)=>{ if(!dragging)return; el.style.left=(cx-ox)+'px'; el.style.top=(cy-oy)+'px'; };
-      const end=(cx,cy)=>{
-        if(!dragging) return; dragging=false;
+      const move=(cx,cy)=>{ if(!dragging)return; el.style.left=(cx-ox)+'px'; el.style.top=(cy-oy)+'px'; highlight(cx,cy); };
+      const highlight=(cx,cy)=>{
         const br=board.getBoundingClientRect();
-        // Center of piece body (not bbox)
-        const px=cx-ox+PAD+PW/2, py=cy-oy+PAD+PH/2;
-        const tx=px-br.left, ty=py-br.top;
-        if(tx>0&&tx<SIZE&&ty>0&&ty<SIZE){
-          const targetC=Math.floor(tx/PW), targetR=Math.floor(ty/PH);
-          if(targetR===p.r && targetC===p.c){
-            board.appendChild(el);
-            el.style.position='absolute';
-            el.style.left=(p.c*PW - PAD)+'px';
-            el.style.top=(p.r*PH - PAD)+'px';
-            el.style.zIndex='10';
-            el.classList.add('placed');
-            placed++; updateProgress();
-            if(placed===total){ res.textContent='🎉 أحسنت! أكملت اللغز'; }
-            return;
-          }
+        const px=cx-ox+PAD+PW/2-br.left, py=cy-oy+PAD+PH/2-br.top;
+        const near = px>-PW*0.5 && px<SIZE+PW*0.5 && py>-PH*0.5 && py<SIZE+PH*0.5;
+        const cxp=p.c*PW+PW/2, cyp=p.r*PH+PH/2;
+        const close = near && Math.hypot(px-cxp,py-cyp) < Math.min(PW,PH)*0.55;
+        board.querySelectorAll('.slot').forEach(s=>{ s.style.background=''; s.style.borderColor='rgba(154,115,232,.28)'; });
+        if(close){
+          const s=board.querySelector('.slot[data-idx="'+(p.r*COLS+p.c)+'"]');
+          if(s){ s.style.background='rgba(142,232,112,.28)'; s.style.borderColor='#8EE870'; }
         }
-        // back to tray
+      };
+      const end=(cx,cy)=>{
+        if(!dragging) return; dragging=false; moves++;
+        board.querySelectorAll('.slot').forEach(s=>{ s.style.background=''; s.style.borderColor='rgba(154,115,232,.28)'; });
+        const br=board.getBoundingClientRect();
+        const px=cx-ox+PAD+PW/2-br.left, py=cy-oy+PAD+PH/2-br.top;
+        const cxp=p.c*PW+PW/2, cyp=p.r*PH+PH/2;
+        // forgiving magnetic snap: anywhere within ~55% of a cell radius
+        if(Math.hypot(px-cxp,py-cyp) < Math.min(PW,PH)*0.55){ place(el,p.r,p.c); return; }
         tray.appendChild(el);
+        el.classList.remove('drag');
         el.style.position=''; el.style.left=''; el.style.top=''; el.style.zIndex=''; el.style.margin=(-PAD)+'px';
+        sndBack(); updateProgress();
       };
       el.addEventListener('pointerdown',e=>{e.preventDefault();start(e.clientX,e.clientY,e);});
       el.addEventListener('pointermove',e=>{if(dragging){e.preventDefault();move(e.clientX,e.clientY);}});
@@ -465,29 +553,49 @@ export function generatePuzzle(c: PuzzleConfig): string {
       el.addEventListener('pointercancel',e=>end(e.clientX,e.clientY));
     }
 
+    /* ---------- confetti ---------- */
+    const fx=document.getElementById('fx'), fxc=fx.getContext('2d');
+    function confetti(){
+      fx.width=innerWidth; fx.height=innerHeight;
+      const COL=['#9A73E8','#FF6C67','#8EE870','#FFCC35','#2FEAFF'];
+      const ps=[];
+      for(let i=0;i<140;i++) ps.push({x:Math.random()*fx.width,y:-20-Math.random()*fx.height*0.4,
+        vx:(Math.random()-.5)*2.2, vy:2+Math.random()*3.4, s:5+Math.random()*7,
+        a:Math.random()*Math.PI, va:(Math.random()-.5)*.25, c:COL[i%COL.length]});
+      let t=0;
+      (function loop(){
+        t++; fxc.clearRect(0,0,fx.width,fx.height);
+        ps.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.a+=p.va;
+          fxc.save(); fxc.translate(p.x,p.y); fxc.rotate(p.a); fxc.fillStyle=p.c;
+          fxc.fillRect(-p.s/2,-p.s/2,p.s,p.s*0.6); fxc.restore(); });
+        if(t<260) requestAnimationFrame(loop); else fxc.clearRect(0,0,fx.width,fx.height);
+      })();
+    }
+
+    /* ---------- controls ---------- */
     document.getElementById('reset').onclick=build;
+    document.getElementById('peek').onclick=(e)=>{
+      board.classList.toggle('ghost-on');
+      e.currentTarget.classList.toggle('ghost', !board.classList.contains('ghost-on'));
+    };
     document.getElementById('hint').onclick=()=>{
-      // pick a random not-yet-placed piece in the tray and snap it home
-      const remaining=pieces.filter(el=>!el.classList.contains('placed') && el.parentNode===tray);
-      if(!remaining.length) return;
+      const remaining=pieces.filter(el=>!el.classList.contains('placed'));
+      if(!remaining.length||finished) return;
       const el=remaining[Math.floor(Math.random()*remaining.length)];
       const r=parseInt(el.dataset.r,10), c=parseInt(el.dataset.c,10);
-      board.appendChild(el);
-      el.style.margin='0';
-      el.style.position='absolute';
-      el.style.left=(c*PW - PAD)+'px';
-      el.style.top=(r*PH - PAD)+'px';
-      el.style.zIndex='10';
-      // brief flash highlight
+      moves++; place(el,r,c);
       el.style.transition='filter .2s';
-      el.style.filter='drop-shadow(0 0 12px #FFB347) drop-shadow(0 3px 4px rgba(0,0,0,.25))';
-      setTimeout(()=>{ el.style.filter=''; }, 700);
-      el.classList.add('placed');
-      placed++; updateProgress();
-      if(placed===total){ res.textContent='🎉 أحسنت! أكملت اللغز'; }
+      el.style.filter='drop-shadow(0 0 14px #FFB347)';
+      setTimeout(()=>{el.style.filter='';},700);
     };
     diffSel.onchange=build;
-    window.addEventListener('resize',()=>{ /* keep current pieces; only rebuild on user reset */ });
+    document.getElementById('winAgain').onclick=build;
+    document.getElementById('winHarder').onclick=()=>{
+      const next=Math.min(6,(parseInt(diffSel.value,10)||4)+1);
+      diffSel.value=String(next); build();
+    };
+    winBox.onclick=(e)=>{ if(e.target===winBox) winBox.classList.remove('on'); };
+    let rz; addEventListener('resize',()=>{ clearTimeout(rz); rz=setTimeout(()=>{ if(placed===0&&!finished) build(); },350); });
     build();
   </script>` + tail;
 }
