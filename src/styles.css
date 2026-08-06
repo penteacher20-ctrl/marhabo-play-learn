@@ -156,3 +156,25 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
   0%,100% { transform: rotate(-3deg); }
   50% { transform: rotate(3deg); }
 }
+
+/* Hide the Lovable branding widget and any child contents/orphaned controls */
+#lovable-badge,
+#lovable-badge *,
+#lovable-badge::before,
+#lovable-badge::after,
+.lovable-badge,
+.lovable-badge *,
+.lovable-badge::before,
+.lovable-badge::after {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  border: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
