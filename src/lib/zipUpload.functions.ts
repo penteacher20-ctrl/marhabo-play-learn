@@ -91,6 +91,7 @@ export const validateZipGame = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => inputSchema.parse(data))
   .handler(async ({ data, context }) => {
+    await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { indexUrl, folderPath } = data;
     const supaUrl = process.env.SUPABASE_URL!;
