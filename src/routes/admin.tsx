@@ -360,9 +360,83 @@ function AdminsAdmin({ ar }: { ar: boolean }) {
   );
 }
 
+type TplSource = "link" | "html" | "zip";
+
+const ZIP_MIME: Record<string, string> = {
+  html: "text/html", htm: "text/html", css: "text/css", js: "application/javascript",
+  mjs: "application/javascript", json: "application/json", svg: "image/svg+xml",
+  png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp",
+  ico: "image/x-icon", mp3: "audio/mpeg", wav: "audio/wav", ogg: "audio/ogg",
+  mp4: "video/mp4", webm: "video/webm", woff: "font/woff", woff2: "font/woff2",
+  ttf: "font/ttf", otf: "font/otf", txt: "text/plain",
+};
+const safeName = (n: string) => n.replace(/[^a-zA-Z0-9._/-]/g, "_");
+const BAD_ZIP_PATH = /(^|\/)\.\.($|\/)|\\|^\/|:/;
+
+function extractUrl(input: string): string | null {
+  const s = input.trim();
+  if (!s) return null;
+  const m = s.match(/<iframe[^>]*\ssrc\s*=\s*["']([^"']+)["']/i);
+  try {
+    const u = new URL(m ? m[1] : s);
+    return u.protocol === "https:" ? u.toString() : null;
+  } catch { return null; }
+}
+
+async function uploadHtmlTemplate(file: File, userId: string): Promise<string> {
+  const path = `${userId}/templates/${Date.now()}-${safeName(file.name)}`;
+  const { error } = await supabase.storage.from("game-files").upload(path, file, { contentType: "text/html", upsert: true });
+  if (error) throw new Error(error.message);
+  return supabase.storage.from("game-files").getPublicUrl(path).data.publicUrl;
+}
+
+async function uploadZipTemplate(file: File, title: string): Promise<string> {
+  const zip = await JSZip.loadAsync(file);
+  const entries = Object.values(zip.files).filter((f) => !f.dir);
+  if (!entries.length) throw new Error("الملف المضغوط فارغ");
+  for (const en of entries) if (BAD_ZIP_PATH.test(en.name)) throw new Error(`مسار غير آمن: ${en.name}`);
+  const htmls = entries.filter((f) => /\.html?$/i.test(f.name));
+  if (!htmls.length) throw new Error("لا يوجد ملف HTML داخل الأرشيف");
+  htmls.sort((a, b) => a.name.split("/").length - b.name.split("/").length);
+  const indexEntry = htmls.find((f) => /^(?:[^/]+\/)?index\.html?$/i.test(f.name)) ?? htmls[0];
+  const parts = indexEntry.name.split("/");
+  const stripPrefix = parts.length > 1 ? parts.slice(0, -1).join("/") + "/" : "";
+
+  const prepared: Array<{ rel: string; blob: Blob; contentType: string; size: number }> = [];
+  for (const entry of entries) {
+    let rel = entry.name;
+    if (stripPrefix && rel.startsWith(stripPrefix)) rel = rel.slice(stripPrefix.length);
+    if (!rel) continue;
+    rel = safeName(rel);
+    const ext = rel.split(".").pop()?.toLowerCase() ?? "";
+    const blob = await entry.async("blob");
+    prepared.push({ rel, blob, contentType: ZIP_MIME[ext] ?? "application/octet-stream", size: blob.size });
+  }
+  let indexRel = indexEntry.name;
+  if (stripPrefix && indexRel.startsWith(stripPrefix)) indexRel = indexRel.slice(stripPrefix.length);
+  indexRel = safeName(indexRel);
+
+  const plan = await createZipUploadPlan({
+    data: { title: title || "template", indexRel, files: prepared.map(({ rel, size, contentType }) => ({ rel, size, contentType })) },
+  });
+  for (const sf of plan.files) {
+    const p = prepared.find((x) => x.rel === sf.rel);
+    if (!p) throw new Error(`ملف مفقود: ${sf.rel}`);
+    const { error } = await supabase.storage.from("game-files")
+      .uploadToSignedUrl(sf.path, sf.token, p.blob, { contentType: sf.contentType, upsert: true });
+    if (error) throw new Error(`فشل رفع "${sf.rel}": ${error.message}`);
+  }
+  const indexUrl = supabase.storage.from("game-files").getPublicUrl(plan.indexPath).data.publicUrl;
+  await validateZipGame({ data: { title: title || "template", indexUrl, folderPath: plan.baseFolder } });
+  return indexUrl;
+}
+
 function NewTemplateForm({ ar, onCreated }: { ar: boolean; onCreated: () => void }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const { user } = useAuth();
+  const [src, setSrc] = useState<TplSource>("link");
+  const [file, setFile] = useState<File | null>(null);
   const [f, setF] = useState({
     slug: "", name_ar: "", name_en: "", icon: "🎮",
     description_ar: "", description_en: "", external_url: "", sort_order: 100,
@@ -375,33 +449,52 @@ function NewTemplateForm({ ar, onCreated }: { ar: boolean; onCreated: () => void
     if (!slug || !f.name_ar.trim() || !f.name_en.trim()) {
       toast.error(ar ? "أكمل الحقول الأساسية" : "Fill required fields"); return;
     }
-    if (f.external_url && !/^https:\/\/[^\s]+$/i.test(f.external_url.trim())) {
-      toast.error(ar ? "الرابط الخارجي يجب أن يبدأ بـ https://" : "External URL must start with https://"); return;
-    }
     setBusy(true);
-    const { error } = await supabase.from("templates").insert({
-      slug, name_ar: f.name_ar.trim(), name_en: f.name_en.trim(),
-      icon: f.icon.trim() || "🎮",
-      description_ar: f.description_ar.trim() || null,
-      description_en: f.description_en.trim() || null,
-      external_url: f.external_url.trim() || null,
-      sort_order: Number(f.sort_order) || 100,
-      is_available: true,
-    });
-    setBusy(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success(ar ? "تم إنشاء القالب" : "Template created");
-    setF({ slug: "", name_ar: "", name_en: "", icon: "🎮", description_ar: "", description_en: "", external_url: "", sort_order: 100 });
-    setOpen(false); onCreated();
+    try {
+      let externalUrl: string | null = null;
+      if (src === "link") {
+        if (f.external_url.trim()) {
+          externalUrl = extractUrl(f.external_url);
+          if (!externalUrl) throw new Error(ar ? "رابط أو كود تضمين غير صالح (https مطلوب)" : "Invalid URL / embed code");
+        }
+      } else {
+        if (!file) throw new Error(ar ? "اختر الملف أولاً" : "Pick a file first");
+        if (!user) throw new Error("no session");
+        externalUrl = src === "html"
+          ? await uploadHtmlTemplate(file, user.id)
+          : await uploadZipTemplate(file, f.name_en || slug);
+      }
+      const { error } = await supabase.from("templates").insert({
+        slug, name_ar: f.name_ar.trim(), name_en: f.name_en.trim(),
+        icon: f.icon.trim() || "🎮",
+        description_ar: f.description_ar.trim() || null,
+        description_en: f.description_en.trim() || null,
+        external_url: externalUrl,
+        sort_order: Number(f.sort_order) || 100,
+        is_available: true,
+      });
+      if (error) throw new Error(error.message);
+      toast.success(ar ? "تم إنشاء القالب" : "Template created");
+      setF({ slug: "", name_ar: "", name_en: "", icon: "🎮", description_ar: "", description_en: "", external_url: "", sort_order: 100 });
+      setFile(null); setSrc("link"); setOpen(false); onCreated();
+    } catch (err: any) {
+      toast.error(err?.message ?? "خطأ");
+    } finally { setBusy(false); }
   };
 
   if (!open) {
     return (
       <button onClick={() => setOpen(true)} className="bubble-btn text-white self-start" style={{ background: "var(--gradient-primary)" }}>
-        + {ar ? "قالب جديد (رابط خارجي أو داخلي)" : "New template (external or built-in)"}
+        + {ar ? "قالب جديد (رابط / تضمين / HTML / ZIP)" : "New template (link / embed / HTML / ZIP)"}
       </button>
     );
   }
+
+  const srcTabs: { key: TplSource; label: string }[] = [
+    { key: "link", label: ar ? "🔗 رابط أو كود تضمين" : "🔗 Link / embed" },
+    { key: "html", label: ar ? "📄 ملف HTML" : "📄 HTML file" },
+    { key: "zip", label: ar ? "🗜️ ملف مضغوط ZIP" : "🗜️ ZIP archive" },
+  ];
 
   return (
     <form onSubmit={submit} className="card-pop p-5 space-y-3">
@@ -409,6 +502,22 @@ function NewTemplateForm({ ar, onCreated }: { ar: boolean; onCreated: () => void
         <h3 className="font-display font-extrabold text-lg">{ar ? "إنشاء قالب جديد" : "Create new template"}</h3>
         <button type="button" onClick={() => setOpen(false)} className="text-sm text-muted-foreground hover:text-foreground">✕</button>
       </div>
+
+      <div className="flex flex-wrap gap-2">
+        {srcTabs.map((s) => (
+          <button
+            key={s.key}
+            type="button"
+            onClick={() => { setSrc(s.key); setFile(null); }}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold border-2 transition ${
+              src === s.key ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"
+            }`}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+
       <div className="grid sm:grid-cols-2 gap-3">
         <Field label={ar ? "المُعرّف (slug)" : "Slug"}><input required value={f.slug} onChange={(e) => upd("slug", e.target.value)} className="input" placeholder="my-template" /></Field>
         <Field label={ar ? "الأيقونة (إيموجي أو صورة)" : "Icon (emoji or image)"}>
@@ -423,11 +532,31 @@ function NewTemplateForm({ ar, onCreated }: { ar: boolean; onCreated: () => void
         <Field label={ar ? "الاسم إنجليزي *" : "Name EN *"}><input required value={f.name_en} onChange={(e) => upd("name_en", e.target.value)} className="input" /></Field>
         <Field label={ar ? "الوصف عربي" : "Description AR"}><input value={f.description_ar} onChange={(e) => upd("description_ar", e.target.value)} className="input" /></Field>
         <Field label={ar ? "الوصف إنجليزي" : "Description EN"}><input value={f.description_en} onChange={(e) => upd("description_en", e.target.value)} className="input" /></Field>
+
         <div className="sm:col-span-2">
-          <Field label={ar ? "رابط خارجي (اختياري — iframe جاهز مثل Wordwall / LearningApps)" : "External URL (optional — Wordwall, LearningApps...)"}>
-            <input type="url" value={f.external_url} onChange={(e) => upd("external_url", e.target.value)} className="input" placeholder="https://..." />
-          </Field>
+          {src === "link" ? (
+            <Field label={ar ? "رابط خارجي أو كود تضمين (اتركه فارغاً لقالب داخلي)" : "External URL or embed code (empty = built-in)"}>
+              <textarea
+                value={f.external_url}
+                onChange={(e) => upd("external_url", e.target.value)}
+                rows={2} dir="ltr"
+                className="input font-mono text-xs"
+                placeholder='https://... أو <iframe src="https://...">'
+              />
+            </Field>
+          ) : (
+            <Field label={src === "html" ? (ar ? "ملف اللعبة (.html)" : "Game file (.html)") : (ar ? "أرشيف اللعبة (.zip يحتوي index.html)" : "Game archive (.zip with index.html)")}>
+              <input
+                type="file"
+                accept={src === "html" ? ".html,.htm" : ".zip"}
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                className="input"
+              />
+              {file && <span className="text-xs text-muted-foreground">{file.name} — {(file.size / 1024).toFixed(1)}KB</span>}
+            </Field>
+          )}
         </div>
+
         <Field label={ar ? "الترتيب" : "Sort"}><input type="number" value={f.sort_order} onChange={(e) => upd("sort_order", Number(e.target.value))} className="input" /></Field>
       </div>
       <button disabled={busy} className="bubble-btn text-white disabled:opacity-60" style={{ background: "var(--gradient-primary)" }}>
@@ -436,6 +565,7 @@ function NewTemplateForm({ ar, onCreated }: { ar: boolean; onCreated: () => void
     </form>
   );
 }
+
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <label className="block"><span className="text-xs font-bold text-muted-foreground block mb-1">{label}</span>{children}</label>;
