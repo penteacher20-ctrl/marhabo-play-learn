@@ -8,6 +8,7 @@ import { Footer } from "@/components/Footer";
 import { Progress } from "@/components/ui/progress";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
+import { useRoles } from "@/lib/roles";
 import { supabase } from "@/integrations/supabase/client";
 import { createZipUploadPlan, validateZipGame } from "@/lib/zipUpload.functions";
 
@@ -119,6 +120,10 @@ function UploadPage() {
   const runUpload = async (e?: FormEvent) => {
     e?.preventDefault();
     if (!title) { toast.error("املأ العنوان"); return; }
+    if (!isAdmin && mode !== "embed") {
+      toast.error("رفع الملفات متاح للإدارة فقط — استخدم كود التضمين أو القوالب المتاحة");
+      return;
+    }
     if (mode === "embed") {
       const url = extractEmbedUrl(embedCode);
       if (!url) { toast.error("رمز التضمين غير صالح — الصق كود <iframe> أو رابط https من منصّة مدعومة"); return; }
