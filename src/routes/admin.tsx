@@ -1,6 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import JSZip from "jszip";
+import { createZipUploadPlan, validateZipGame } from "@/lib/zipUpload.functions";
 import { LayoutGrid, MessageSquare, Palette, Users, ShieldCheck } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
