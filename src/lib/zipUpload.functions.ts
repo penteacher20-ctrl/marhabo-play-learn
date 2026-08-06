@@ -30,6 +30,18 @@ function validateRelativePath(path: string) {
   if (!/^[a-zA-Z0-9._\-/]+$/.test(path)) throw new Error(`اسم ملف غير مسموح بعد التنظيف: ${path}`);
 }
 
+// Uploading raw game files (ZIP / HTML) is an admin-only capability.
+// Regular users may only publish games through an embed code.
+async function assertAdmin(context: { supabase: any; userId: string }) {
+  const [a, s] = await Promise.all([
+    context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" }),
+    context.supabase.rpc("has_role", { _user_id: context.userId, _role: "super_admin" }),
+  ]);
+  if (!a.data && !s.data) {
+    throw new Error("رفع الملفات متاح للإدارة فقط — يمكنك نشر لعبتك عبر كود التضمين");
+  }
+}
+
 export const createZipUploadPlan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => uploadPlanSchema.parse(data))
