@@ -57,8 +57,9 @@ function extractEmbedUrl(input: string): string | null {
 function UploadPage() {
   const { tr } = useI18n();
   const { user, loading } = useAuth();
+  const { isAdmin, loading: rolesLoading } = useRoles();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<Mode>("html");
+  const [mode, setMode] = useState<Mode>("embed");
   const [file, setFile] = useState<File | null>(null);
   const [embedCode, setEmbedCode] = useState("");
   const [embedSize, setEmbedSize] = useState<"responsive" | "fixed">("responsive");
