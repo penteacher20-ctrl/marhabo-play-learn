@@ -334,30 +334,41 @@ function UploadPage() {
 
         <form onSubmit={runUpload} className="card-pop p-8 space-y-5">
           <fieldset disabled={busy} className="space-y-5 disabled:opacity-70">
-            {/* Mode selector */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <ModeCard
-                active={mode === "html"}
-                onClick={() => { setMode("html"); setFile(null); setStages([]); }}
-                icon="📄"
-                title="ملف HTML واحد"
-                desc="لعبة داخل ملف .html مستقل بدون أصول خارجية."
-              />
-              <ModeCard
-                active={mode === "zip"}
-                onClick={() => { setMode("zip"); setFile(null); setStages([]); }}
-                icon="🗜️"
-                title="أرشيف ZIP كامل"
-                desc="لعبة متعددة الملفات داخل .zip، مع index.html."
-              />
-              <ModeCard
-                active={mode === "embed"}
-                onClick={() => { setMode("embed"); setFile(null); setStages([]); }}
-                icon="🔗"
-                title="رمز تضمين (iframe)"
-                desc="ألصق كود <iframe> من Wordwall / YouTube / LearningApps..."
-              />
-            </div>
+            {/* Mode selector — file uploads are admin-only */}
+            {isAdmin && !rolesLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <ModeCard
+                  active={mode === "html"}
+                  onClick={() => { setMode("html"); setFile(null); setStages([]); }}
+                  icon="📄"
+                  title="ملف HTML واحد"
+                  desc="لعبة داخل ملف .html مستقل بدون أصول خارجية."
+                />
+                <ModeCard
+                  active={mode === "zip"}
+                  onClick={() => { setMode("zip"); setFile(null); setStages([]); }}
+                  icon="🗜️"
+                  title="أرشيف ZIP كامل"
+                  desc="لعبة متعددة الملفات داخل .zip، مع index.html."
+                />
+                <ModeCard
+                  active={mode === "embed"}
+                  onClick={() => { setMode("embed"); setFile(null); setStages([]); }}
+                  icon="🔗"
+                  title="رمز تضمين (iframe)"
+                  desc="ألصق كود <iframe> من Wordwall / YouTube / LearningApps..."
+                />
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm">
+                <div className="font-bold mb-1">🔗 رفع لعبة بكود التضمين</div>
+                <p className="text-muted-foreground">
+                  رفع ملفات HTML أو ZIP متاح للإدارة فقط. يمكنك نشر لعبتك عبر كود التضمين، أو إنشاء لعبة من
+                  القوالب المتاحة على الموقع.
+                </p>
+              </div>
+            )}
+
 
             {mode === "embed" ? (
               <label className="block">
