@@ -46,6 +46,7 @@ export const createZipUploadPlan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => uploadPlanSchema.parse(data))
   .handler(async ({ data, context }) => {
+    await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { files, indexRel } = data;
 
