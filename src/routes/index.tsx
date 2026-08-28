@@ -130,6 +130,82 @@ function Index() {
         </div>
       </section>
 
+      {/* RICH CONTENT */}
+      <section className="container mx-auto px-4 py-16">
+        <div className="max-w-4xl mx-auto space-y-10">
+          <div className="card-pop p-6 md:p-10">
+            <h2 className="text-3xl md:text-4xl font-display font-black mb-4">{ar ? "ما هي منصة مِرحابو؟" : "What is Marhabo?"}</h2>
+            <p className="text-foreground/80 leading-relaxed mb-3">
+              {ar
+                ? "مِرحابو منصة عربية متخصصة في التعلم القائم على اللعب، رؤيتها أن دمج اللعب بالتعليم هو الطريق الأسرع لترسيخ المعلومة لدى الطفل. نحوّل المحتوى الدراسي التقليدي إلى ألعاب تفاعلية ممتعة: يختار المعلم قالبًا جاهزًا، يضيف أسئلته أو كلماته أو صوره، ثم يشارك رابط اللعبة مع طلابه ليلعبوا فورًا من أي جهاز دون تسجيل."
+                : "Marhabo is an Arabic-first platform specialized in game-based learning. Our vision: blending play with education is the fastest way to make knowledge stick. We turn traditional lesson content into fun interactive games — a teacher picks a ready template, adds questions, words, or images, then shares one link students play instantly from any device, no signup needed."}
+            </p>
+            <p className="text-foreground/80 leading-relaxed">
+              {ar
+                ? "المنصة ثنائية اللغة بالكامل (العربية والإنجليزية)، ومصممة للأطفال من 4 إلى 12 سنة، مع تجربة لعب آمنة خالية من الإعلانات داخل شاشات اللعب."
+                : "The platform is fully bilingual (Arabic and English), designed for children aged 4 to 12, with a safe ad-free play experience inside game screens."}
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="card-pop p-6 md:p-8">
+              <h3 className="text-2xl font-display font-extrabold mb-3">{ar ? "فوائد المنصة للمعلمين" : "Benefits for teachers"}</h3>
+              <ul className="space-y-2 text-foreground/80 leading-relaxed list-disc ps-5">
+                <li>{ar ? "إنشاء محتوى تفاعلي في دقائق دون أي خبرة برمجية — فقط أضف محتواك وشاركه." : "Create interactive content in minutes with zero coding — just add your content and share."}</li>
+                <li>{ar ? "قوالب متنوعة تناسب كل درس: اختبارات، مطابقة، بازل، عجلة، رسم، وبرج الأبطال." : "Varied templates for every lesson: quizzes, matching, jigsaw, wheel, drawing, and Tower Kingdom."}</li>
+                <li>{ar ? "إدارة ألعابك من لوحة تحكم واحدة: تعديل، نشر، إخفاء، ومتابعة مرات اللعب." : "Manage your games from one dashboard: edit, publish, hide, and track play counts."}</li>
+                <li>{ar ? "مشاركة ألعابك مع مجتمع المعلمين أو إبقاؤها خاصة بك." : "Share your games with the teacher community or keep them private."}</li>
+              </ul>
+            </div>
+            <div className="card-pop p-6 md:p-8">
+              <h3 className="text-2xl font-display font-extrabold mb-3">{ar ? "فوائد المنصة للأطفال" : "Benefits for kids"}</h3>
+              <ul className="space-y-2 text-foreground/80 leading-relaxed list-disc ps-5">
+                <li>{ar ? "تعلّم ممتع وتفاعلي يحوّل الدرس إلى لعبة يحبها الطفل ويعود إليها." : "Fun, interactive learning that turns lessons into games kids love and return to."}</li>
+                <li>{ar ? "تعزيز إيجابي فوري: نجوم وتشجيع واحتفالات عند كل إنجاز." : "Instant positive reinforcement: stars, cheers, and celebrations for every achievement."}</li>
+                <li>{ar ? "تنمية مهارات الذاكرة والتركيز والمنطق والإبداع حسب نوع اللعبة." : "Builds memory, focus, logic, and creativity depending on the game type."}</li>
+                <li>{ar ? "بيئة آمنة: لا إعلانات داخل شاشات اللعب ولا تسجيل مطلوب من الطفل." : "A safe environment: no ads in play screens and no child signup required."}</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="card-pop p-6 md:p-10">
+            <h2 className="text-3xl md:text-4xl font-display font-black mb-6">{ar ? "أنواع الألعاب وفوائدها التعليمية" : "Game types and their educational value"}</h2>
+            <div className="grid sm:grid-cols-2 gap-5">
+              {[
+                { icon: "🧩", t: ar ? "البازل (تركيب الصور)" : "Jigsaw puzzle", d: ar ? "يطوّر الإدراك البصري والصبر وحل المشكلات، مع مستويات صعوبة متدرجة من 9 إلى 36 قطعة." : "Develops visual perception, patience, and problem-solving, with difficulty levels from 9 to 36 pieces." },
+                { icon: "🏰", t: ar ? "برج الأبطال" : "Tower Kingdom", d: ar ? "كل إجابة صحيحة تبني طابقًا جديدًا — يعزز الدافعية والمراجعة المتكررة عبر مراحل من القرية إلى الفضاء." : "Each correct answer builds a new floor — boosts motivation and repeated review across stages from the village to outer space." },
+                { icon: "🎨", t: ar ? "الرسم والتلوين" : "Drawing & coloring", d: ar ? "ينمي الإبداع والمهارات الحركية الدقيقة، مع فرش متعددة وتكبير باللمس وتعبئة ذكية." : "Nurtures creativity and fine motor skills, with multiple brushes, touch zoom, and smart fill." },
+                { icon: "❓", t: ar ? "الاختبارات" : "Quizzes", d: ar ? "مراجعة سريعة للمعلومات بتغذية راجعة فورية، مثالية للتقييم القبلي والبعدي." : "Quick knowledge review with instant feedback — ideal for pre- and post-assessment." },
+                { icon: "🔗", t: ar ? "المطابقة" : "Matching", d: ar ? "يربط المفاهيم بمعانيها (كلمات، صور، رموز) ويقوي الذاكرة الترابطية." : "Connects concepts to meanings (words, images, symbols) and strengthens associative memory." },
+                { icon: "🎡", t: ar ? "عجلة الحظ" : "Spin wheel", d: ar ? "تضيف عنصر الحماس والمفاجأة لاختيار الأسئلة أو المكافآت في الفصل." : "Adds excitement and surprise to picking questions or rewards in class." },
+              ].map((g) => (
+                <div key={g.t} className="rounded-2xl bg-secondary/60 p-5">
+                  <div className="text-3xl mb-2">{g.icon}</div>
+                  <h4 className="font-display font-extrabold text-lg">{g.t}</h4>
+                  <p className="text-sm text-foreground/70 mt-1 leading-relaxed">{g.d}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* FAQ */}
+          <div className="card-pop p-6 md:p-10">
+            <h2 className="text-3xl md:text-4xl font-display font-black mb-6 text-center">{ar ? "الأسئلة الشائعة" : "Frequently asked questions"}</h2>
+            <div className="space-y-3">
+              {(ar ? FAQ_AR : FAQ_EN).map((f) => (
+                <details key={f.q} className="group rounded-2xl bg-secondary/60 open:bg-secondary transition-colors">
+                  <summary className="cursor-pointer list-none flex items-center justify-between gap-3 p-4 font-display font-extrabold">
+                    <span>{f.q}</span>
+                    <span className="text-primary transition-transform group-open:rotate-180">▾</span>
+                  </summary>
+                  <p className="px-4 pb-4 text-foreground/75 leading-relaxed text-sm">{f.a}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       <Footer />
     </div>
   );
