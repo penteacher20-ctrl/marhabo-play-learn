@@ -15,6 +15,7 @@ interface CommunityGame { id: string; title: string; description: string | null;
 
 function Index() {
   const { tr, lang } = useI18n();
+  const ar = lang === "ar";
   const [templates, setTemplates] = useState<Tpl[]>([]);
   const [communityGames, setCommunityGames] = useState<CommunityGame[]>([]);
 
@@ -212,6 +213,26 @@ function Index() {
 }
 
 const COLORS = ["var(--coral)", "var(--purple-fun)", "var(--cyan-fun)", "var(--green-fun)", "var(--yellow-fun)", "var(--purple-fun)"];
+
+const FAQ_AR = [
+  { q: "هل منصة مِرحابو مجانية؟", a: "نعم، يمكنك إنشاء حساب مجاني والبدء فورًا في إنشاء الألعاب ومشاركتها مع طلابك. الطلاب يلعبون مجانًا ودون أي تسجيل." },
+  { q: "هل يحتاج الطلاب إلى إنشاء حساب للعب؟", a: "لا، يكفي أن يرسل المعلم رابط اللعبة للطلاب فيفتحونه من أي جهاز (هاتف، تابلت، حاسوب) ويلعبون مباشرة دون تسجيل أو تحميل تطبيق." },
+  { q: "كيف أنشئ لعبة تعليمية؟", a: "سجّل حسابًا، اختر قالبًا من صفحة القوالب (اختبار، مطابقة، بازل، برج الأبطال، رسم وتلوين...)، أضف محتواك من أسئلة وصور وكلمات، ثم اضغط نشر وانسخ رابط المشاركة." },
+  { q: "هل تدعم المنصة اللغة الإنجليزية؟", a: "نعم، المنصة ثنائية اللغة بالكامل؛ يمكنك التبديل بين العربية والإنجليزية من الواجهة، ويمكنك إنشاء ألعاب بأي من اللغتين." },
+  { q: "هل المحتوى آمن للأطفال؟", a: "نعم، شاشات اللعب خالية تمامًا من الإعلانات وأي عناصر تجارية، والإعلانات تظهر فقط في الصفحات الموجهة للبالغين مثل لوحة المعلم." },
+  { q: "هل يمكنني تعديل اللعبة بعد نشرها؟", a: "بالتأكيد، من لوحة التحكم اختر اللعبة واضغط تعديل لتغيير الأسئلة أو الصور أو الإعدادات، وتُحفظ التغييرات فورًا على نفس الرابط." },
+  { q: "ما الفرق بين الألعاب العامة والخاصة؟", a: "الألعاب العامة تظهر في صفحة استكشاف وفي نماذج أعمالك على بروفايلك العام ليستفيد منها الجميع، أما الخاصة فلا يصل إليها إلا من يملك رابطها." },
+];
+
+const FAQ_EN = [
+  { q: "Is Marhabo free?", a: "Yes — create a free account and start building and sharing games with your students right away. Students play for free with no signup." },
+  { q: "Do students need an account to play?", a: "No. The teacher simply shares the game link; students open it on any device (phone, tablet, computer) and play instantly — no signup or app download." },
+  { q: "How do I create an educational game?", a: "Sign up, pick a template from the Templates page (quiz, matching, jigsaw, Tower Kingdom, drawing...), add your questions, images, or words, then publish and copy the share link." },
+  { q: "Does the platform support English?", a: "Yes, the platform is fully bilingual — switch between Arabic and English in the interface, and build games in either language." },
+  { q: "Is the content safe for children?", a: "Yes. Play screens are completely ad-free with no commercial elements; ads only appear on adult-facing pages such as the teacher dashboard." },
+  { q: "Can I edit a game after publishing?", a: "Absolutely. From your dashboard, choose the game and hit edit to change questions, images, or settings — changes save instantly on the same link." },
+  { q: "What's the difference between public and private games?", a: "Public games appear on the Explore page and in your public profile showcase for everyone to benefit from; private games are only reachable via their direct link." },
+];
 
 function TemplateCard({ t, idx }: { t: Tpl; idx: number }) {
   const { tr, lang } = useI18n();
