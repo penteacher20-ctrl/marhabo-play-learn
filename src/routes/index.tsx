@@ -8,13 +8,42 @@ import { FloatingDeco } from "@/components/FloatingDeco";
 import { supabase } from "@/integrations/supabase/client";
 import mascot from "@/assets/mascot-fox.png";
 
-export const Route = createFileRoute("/")({ component: Index });
+export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "مِرحابو — التعلّم بقى لعبة! | ألعاب تعليمية للأطفال" },
+      { name: "description", content: "مِرحابو منصة ألعاب تعليمية تفاعلية للأطفال من 4 إلى 12 سنة: اختبارات، بازل، برج الأبطال، رسم وتلوين. أنشئ لعبتك وشاركها مع طلابك مجانًا." },
+      { property: "og:title", content: "مِرحابو — التعلّم بقى لعبة!" },
+      { property: "og:description", content: "حوّل دروسك إلى ألعاب تفاعلية ممتعة في دقائق وشاركها مع طلابك برابط واحد." },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://marhabo-play-learn.lovable.app/" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+    links: [{ rel: "canonical", href: "https://marhabo-play-learn.lovable.app/" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: FAQ_AR.map((f) => ({
+            "@type": "Question",
+            name: f.q,
+            acceptedAnswer: { "@type": "Answer", text: f.a },
+          })),
+        }),
+      },
+    ],
+  }),
+  component: Index,
+});
 
 interface Tpl { id: string; slug: string; name_ar: string; name_en: string; description_ar: string | null; description_en: string | null; icon: string | null; is_available: boolean; }
 interface CommunityGame { id: string; title: string; description: string | null; thumbnail_url: string | null; play_count: number; created_at: string; user_id: string; profiles?: { name: string | null } | null; }
 
 function Index() {
   const { tr, lang } = useI18n();
+  const ar = lang === "ar";
   const [templates, setTemplates] = useState<Tpl[]>([]);
   const [communityGames, setCommunityGames] = useState<CommunityGame[]>([]);
 
@@ -130,12 +159,108 @@ function Index() {
         </div>
       </section>
 
+      {/* RICH CONTENT */}
+      <section className="container mx-auto px-4 py-16">
+        <div className="max-w-4xl mx-auto space-y-10">
+          <div className="card-pop p-6 md:p-10">
+            <h2 className="text-3xl md:text-4xl font-display font-black mb-4">{ar ? "ما هي منصة مِرحابو؟" : "What is Marhabo?"}</h2>
+            <p className="text-foreground/80 leading-relaxed mb-3">
+              {ar
+                ? "مِرحابو منصة عربية متخصصة في التعلم القائم على اللعب، رؤيتها أن دمج اللعب بالتعليم هو الطريق الأسرع لترسيخ المعلومة لدى الطفل. نحوّل المحتوى الدراسي التقليدي إلى ألعاب تفاعلية ممتعة: يختار المعلم قالبًا جاهزًا، يضيف أسئلته أو كلماته أو صوره، ثم يشارك رابط اللعبة مع طلابه ليلعبوا فورًا من أي جهاز دون تسجيل."
+                : "Marhabo is an Arabic-first platform specialized in game-based learning. Our vision: blending play with education is the fastest way to make knowledge stick. We turn traditional lesson content into fun interactive games — a teacher picks a ready template, adds questions, words, or images, then shares one link students play instantly from any device, no signup needed."}
+            </p>
+            <p className="text-foreground/80 leading-relaxed">
+              {ar
+                ? "المنصة ثنائية اللغة بالكامل (العربية والإنجليزية)، ومصممة للأطفال من 4 إلى 12 سنة، مع تجربة لعب آمنة خالية من الإعلانات داخل شاشات اللعب."
+                : "The platform is fully bilingual (Arabic and English), designed for children aged 4 to 12, with a safe ad-free play experience inside game screens."}
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="card-pop p-6 md:p-8">
+              <h3 className="text-2xl font-display font-extrabold mb-3">{ar ? "فوائد المنصة للمعلمين" : "Benefits for teachers"}</h3>
+              <ul className="space-y-2 text-foreground/80 leading-relaxed list-disc ps-5">
+                <li>{ar ? "إنشاء محتوى تفاعلي في دقائق دون أي خبرة برمجية — فقط أضف محتواك وشاركه." : "Create interactive content in minutes with zero coding — just add your content and share."}</li>
+                <li>{ar ? "قوالب متنوعة تناسب كل درس: اختبارات، مطابقة، بازل، عجلة، رسم، وبرج الأبطال." : "Varied templates for every lesson: quizzes, matching, jigsaw, wheel, drawing, and Tower Kingdom."}</li>
+                <li>{ar ? "إدارة ألعابك من لوحة تحكم واحدة: تعديل، نشر، إخفاء، ومتابعة مرات اللعب." : "Manage your games from one dashboard: edit, publish, hide, and track play counts."}</li>
+                <li>{ar ? "مشاركة ألعابك مع مجتمع المعلمين أو إبقاؤها خاصة بك." : "Share your games with the teacher community or keep them private."}</li>
+              </ul>
+            </div>
+            <div className="card-pop p-6 md:p-8">
+              <h3 className="text-2xl font-display font-extrabold mb-3">{ar ? "فوائد المنصة للأطفال" : "Benefits for kids"}</h3>
+              <ul className="space-y-2 text-foreground/80 leading-relaxed list-disc ps-5">
+                <li>{ar ? "تعلّم ممتع وتفاعلي يحوّل الدرس إلى لعبة يحبها الطفل ويعود إليها." : "Fun, interactive learning that turns lessons into games kids love and return to."}</li>
+                <li>{ar ? "تعزيز إيجابي فوري: نجوم وتشجيع واحتفالات عند كل إنجاز." : "Instant positive reinforcement: stars, cheers, and celebrations for every achievement."}</li>
+                <li>{ar ? "تنمية مهارات الذاكرة والتركيز والمنطق والإبداع حسب نوع اللعبة." : "Builds memory, focus, logic, and creativity depending on the game type."}</li>
+                <li>{ar ? "بيئة آمنة: لا إعلانات داخل شاشات اللعب ولا تسجيل مطلوب من الطفل." : "A safe environment: no ads in play screens and no child signup required."}</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="card-pop p-6 md:p-10">
+            <h2 className="text-3xl md:text-4xl font-display font-black mb-6">{ar ? "أنواع الألعاب وفوائدها التعليمية" : "Game types and their educational value"}</h2>
+            <div className="grid sm:grid-cols-2 gap-5">
+              {[
+                { icon: "🧩", t: ar ? "البازل (تركيب الصور)" : "Jigsaw puzzle", d: ar ? "يطوّر الإدراك البصري والصبر وحل المشكلات، مع مستويات صعوبة متدرجة من 9 إلى 36 قطعة." : "Develops visual perception, patience, and problem-solving, with difficulty levels from 9 to 36 pieces." },
+                { icon: "🏰", t: ar ? "برج الأبطال" : "Tower Kingdom", d: ar ? "كل إجابة صحيحة تبني طابقًا جديدًا — يعزز الدافعية والمراجعة المتكررة عبر مراحل من القرية إلى الفضاء." : "Each correct answer builds a new floor — boosts motivation and repeated review across stages from the village to outer space." },
+                { icon: "🎨", t: ar ? "الرسم والتلوين" : "Drawing & coloring", d: ar ? "ينمي الإبداع والمهارات الحركية الدقيقة، مع فرش متعددة وتكبير باللمس وتعبئة ذكية." : "Nurtures creativity and fine motor skills, with multiple brushes, touch zoom, and smart fill." },
+                { icon: "❓", t: ar ? "الاختبارات" : "Quizzes", d: ar ? "مراجعة سريعة للمعلومات بتغذية راجعة فورية، مثالية للتقييم القبلي والبعدي." : "Quick knowledge review with instant feedback — ideal for pre- and post-assessment." },
+                { icon: "🔗", t: ar ? "المطابقة" : "Matching", d: ar ? "يربط المفاهيم بمعانيها (كلمات، صور، رموز) ويقوي الذاكرة الترابطية." : "Connects concepts to meanings (words, images, symbols) and strengthens associative memory." },
+                { icon: "🎡", t: ar ? "عجلة الحظ" : "Spin wheel", d: ar ? "تضيف عنصر الحماس والمفاجأة لاختيار الأسئلة أو المكافآت في الفصل." : "Adds excitement and surprise to picking questions or rewards in class." },
+              ].map((g) => (
+                <div key={g.t} className="rounded-2xl bg-secondary/60 p-5">
+                  <div className="text-3xl mb-2">{g.icon}</div>
+                  <h4 className="font-display font-extrabold text-lg">{g.t}</h4>
+                  <p className="text-sm text-foreground/70 mt-1 leading-relaxed">{g.d}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* FAQ */}
+          <div className="card-pop p-6 md:p-10">
+            <h2 className="text-3xl md:text-4xl font-display font-black mb-6 text-center">{ar ? "الأسئلة الشائعة" : "Frequently asked questions"}</h2>
+            <div className="space-y-3">
+              {(ar ? FAQ_AR : FAQ_EN).map((f) => (
+                <details key={f.q} className="group rounded-2xl bg-secondary/60 open:bg-secondary transition-colors">
+                  <summary className="cursor-pointer list-none flex items-center justify-between gap-3 p-4 font-display font-extrabold">
+                    <span>{f.q}</span>
+                    <span className="text-primary transition-transform group-open:rotate-180">▾</span>
+                  </summary>
+                  <p className="px-4 pb-4 text-foreground/75 leading-relaxed text-sm">{f.a}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       <Footer />
     </div>
   );
 }
 
 const COLORS = ["var(--coral)", "var(--purple-fun)", "var(--cyan-fun)", "var(--green-fun)", "var(--yellow-fun)", "var(--purple-fun)"];
+
+const FAQ_AR = [
+  { q: "هل منصة مِرحابو مجانية؟", a: "نعم، يمكنك إنشاء حساب مجاني والبدء فورًا في إنشاء الألعاب ومشاركتها مع طلابك. الطلاب يلعبون مجانًا ودون أي تسجيل." },
+  { q: "هل يحتاج الطلاب إلى إنشاء حساب للعب؟", a: "لا، يكفي أن يرسل المعلم رابط اللعبة للطلاب فيفتحونه من أي جهاز (هاتف، تابلت، حاسوب) ويلعبون مباشرة دون تسجيل أو تحميل تطبيق." },
+  { q: "كيف أنشئ لعبة تعليمية؟", a: "سجّل حسابًا، اختر قالبًا من صفحة القوالب (اختبار، مطابقة، بازل، برج الأبطال، رسم وتلوين...)، أضف محتواك من أسئلة وصور وكلمات، ثم اضغط نشر وانسخ رابط المشاركة." },
+  { q: "هل تدعم المنصة اللغة الإنجليزية؟", a: "نعم، المنصة ثنائية اللغة بالكامل؛ يمكنك التبديل بين العربية والإنجليزية من الواجهة، ويمكنك إنشاء ألعاب بأي من اللغتين." },
+  { q: "هل المحتوى آمن للأطفال؟", a: "نعم، شاشات اللعب خالية تمامًا من الإعلانات وأي عناصر تجارية، والإعلانات تظهر فقط في الصفحات الموجهة للبالغين مثل لوحة المعلم." },
+  { q: "هل يمكنني تعديل اللعبة بعد نشرها؟", a: "بالتأكيد، من لوحة التحكم اختر اللعبة واضغط تعديل لتغيير الأسئلة أو الصور أو الإعدادات، وتُحفظ التغييرات فورًا على نفس الرابط." },
+  { q: "ما الفرق بين الألعاب العامة والخاصة؟", a: "الألعاب العامة تظهر في صفحة استكشاف وفي نماذج أعمالك على بروفايلك العام ليستفيد منها الجميع، أما الخاصة فلا يصل إليها إلا من يملك رابطها." },
+];
+
+const FAQ_EN = [
+  { q: "Is Marhabo free?", a: "Yes — create a free account and start building and sharing games with your students right away. Students play for free with no signup." },
+  { q: "Do students need an account to play?", a: "No. The teacher simply shares the game link; students open it on any device (phone, tablet, computer) and play instantly — no signup or app download." },
+  { q: "How do I create an educational game?", a: "Sign up, pick a template from the Templates page (quiz, matching, jigsaw, Tower Kingdom, drawing...), add your questions, images, or words, then publish and copy the share link." },
+  { q: "Does the platform support English?", a: "Yes, the platform is fully bilingual — switch between Arabic and English in the interface, and build games in either language." },
+  { q: "Is the content safe for children?", a: "Yes. Play screens are completely ad-free with no commercial elements; ads only appear on adult-facing pages such as the teacher dashboard." },
+  { q: "Can I edit a game after publishing?", a: "Absolutely. From your dashboard, choose the game and hit edit to change questions, images, or settings — changes save instantly on the same link." },
+  { q: "What's the difference between public and private games?", a: "Public games appear on the Explore page and in your public profile showcase for everyone to benefit from; private games are only reachable via their direct link." },
+];
 
 function TemplateCard({ t, idx }: { t: Tpl; idx: number }) {
   const { tr, lang } = useI18n();
