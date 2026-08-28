@@ -8,7 +8,35 @@ import { FloatingDeco } from "@/components/FloatingDeco";
 import { supabase } from "@/integrations/supabase/client";
 import mascot from "@/assets/mascot-fox.png";
 
-export const Route = createFileRoute("/")({ component: Index });
+export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "مِرحابو — التعلّم بقى لعبة! | ألعاب تعليمية للأطفال" },
+      { name: "description", content: "مِرحابو منصة ألعاب تعليمية تفاعلية للأطفال من 4 إلى 12 سنة: اختبارات، بازل، برج الأبطال، رسم وتلوين. أنشئ لعبتك وشاركها مع طلابك مجانًا." },
+      { property: "og:title", content: "مِرحابو — التعلّم بقى لعبة!" },
+      { property: "og:description", content: "حوّل دروسك إلى ألعاب تفاعلية ممتعة في دقائق وشاركها مع طلابك برابط واحد." },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://marhabo-play-learn.lovable.app/" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+    links: [{ rel: "canonical", href: "https://marhabo-play-learn.lovable.app/" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: FAQ_AR.map((f) => ({
+            "@type": "Question",
+            name: f.q,
+            acceptedAnswer: { "@type": "Answer", text: f.a },
+          })),
+        }),
+      },
+    ],
+  }),
+  component: Index,
+});
 
 interface Tpl { id: string; slug: string; name_ar: string; name_en: string; description_ar: string | null; description_en: string | null; icon: string | null; is_available: boolean; }
 interface CommunityGame { id: string; title: string; description: string | null; thumbnail_url: string | null; play_count: number; created_at: string; user_id: string; profiles?: { name: string | null } | null; }
