@@ -39,30 +39,16 @@ export const Route = createFileRoute("/")({
 });
 
 interface Tpl { id: string; slug: string; name_ar: string; name_en: string; description_ar: string | null; description_en: string | null; icon: string | null; is_available: boolean; }
-interface CommunityGame { id: string; title: string; description: string | null; thumbnail_url: string | null; play_count: number; created_at: string; user_id: string; profiles?: { name: string | null } | null; }
 
 function Index() {
   const { tr, lang } = useI18n();
   const ar = lang === "ar";
   const [templates, setTemplates] = useState<Tpl[]>([]);
-  const [communityGames, setCommunityGames] = useState<CommunityGame[]>([]);
 
   useEffect(() => {
     supabase.from("templates").select("*").order("sort_order").then(({ data }) => setTemplates((data as Tpl[]) ?? []));
-    (async () => {
-      const { data: games } = await supabase
-        .from("games")
-        .select("id,title,description,thumbnail_url,play_count,created_at,user_id")
-        .eq("is_public", true)
-        .order("created_at", { ascending: false })
-        .limit(8);
-      if (!games || games.length === 0) { setCommunityGames([]); return; }
-      const ids = Array.from(new Set(games.map((g: any) => g.user_id)));
-      const { data: profs } = await supabase.from("profiles").select("id,name").in("id", ids);
-      const map = new Map((profs ?? []).map((p: any) => [p.id, p.name]));
-      setCommunityGames(games.map((g: any) => ({ ...g, profiles: { name: map.get(g.user_id) ?? null } })));
-    })();
   }, []);
+
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--gradient-hero)" }}>
@@ -132,21 +118,9 @@ function Index() {
         </div>
       </section>
 
-      {/* COMMUNITY GAMES */}
-      {communityGames.length > 0 && (
-        <section className="container mx-auto px-4 py-16">
-          <div className="text-center mb-10">
-            <h2 className="text-4xl md:text-5xl font-display font-black">{tr("community_title")}</h2>
-            <p className="mt-3 text-muted-foreground text-lg">{tr("community_sub")}</p>
-          </div>
-          <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-            {communityGames.map((g, i) => <CommunityCard key={g.id} g={g} idx={i} />)}
-          </div>
-          <div className="text-center mt-8">
-            <Link to="/explore" className="bubble-btn text-white" style={{ background: "var(--gradient-fresh)" }}>{tr("view_all")} →</Link>
-          </div>
-        </section>
-      )}
+      {/* Community games showcase intentionally disabled until human content review is in place. */}
+
+
 
 
       {/* HOW */}
@@ -247,9 +221,9 @@ const FAQ_AR = [
   { q: "هل يحتاج الطلاب إلى إنشاء حساب للعب؟", a: "لا، يكفي أن يرسل المعلم رابط اللعبة للطلاب فيفتحونه من أي جهاز (هاتف، تابلت، حاسوب) ويلعبون مباشرة دون تسجيل أو تحميل تطبيق." },
   { q: "كيف أنشئ لعبة تعليمية؟", a: "سجّل حسابًا، اختر قالبًا من صفحة القوالب (اختبار، مطابقة، بازل، برج الأبطال، رسم وتلوين...)، أضف محتواك من أسئلة وصور وكلمات، ثم اضغط نشر وانسخ رابط المشاركة." },
   { q: "هل تدعم المنصة اللغة الإنجليزية؟", a: "نعم، المنصة ثنائية اللغة بالكامل؛ يمكنك التبديل بين العربية والإنجليزية من الواجهة، ويمكنك إنشاء ألعاب بأي من اللغتين." },
-  { q: "هل المحتوى آمن للأطفال؟", a: "نعم، شاشات اللعب خالية تمامًا من الإعلانات وأي عناصر تجارية، والإعلانات تظهر فقط في الصفحات الموجهة للبالغين مثل لوحة المعلم." },
+  { q: "هل المحتوى آمن للأطفال؟", a: "نعم، لا تعرض مِرحابو أي إعلانات حاليًا في أي صفحة، وشاشات اللعب خالية تمامًا من أي عناصر تجارية. وإن فُعّلت الإعلانات مستقبلًا فستكون فقط في مساحة المعلمين البالغين بعد تسجيل الدخول." },
   { q: "هل يمكنني تعديل اللعبة بعد نشرها؟", a: "بالتأكيد، من لوحة التحكم اختر اللعبة واضغط تعديل لتغيير الأسئلة أو الصور أو الإعدادات، وتُحفظ التغييرات فورًا على نفس الرابط." },
-  { q: "ما الفرق بين الألعاب العامة والخاصة؟", a: "الألعاب العامة تظهر في صفحة استكشاف وفي نماذج أعمالك على بروفايلك العام ليستفيد منها الجميع، أما الخاصة فلا يصل إليها إلا من يملك رابطها." },
+  { q: "ما الفرق بين الألعاب العامة والخاصة؟", a: "حاليًا لا يُعرض أي محتوى من صنع المستخدمين علنًا على المنصة؛ تصل إلى أي لعبة عبر رابطها المباشر الذي تشاركه أنت مع طلابك." },
 ];
 
 const FAQ_EN = [
@@ -257,9 +231,9 @@ const FAQ_EN = [
   { q: "Do students need an account to play?", a: "No. The teacher simply shares the game link; students open it on any device (phone, tablet, computer) and play instantly — no signup or app download." },
   { q: "How do I create an educational game?", a: "Sign up, pick a template from the Templates page (quiz, matching, jigsaw, Tower Kingdom, drawing...), add your questions, images, or words, then publish and copy the share link." },
   { q: "Does the platform support English?", a: "Yes, the platform is fully bilingual — switch between Arabic and English in the interface, and build games in either language." },
-  { q: "Is the content safe for children?", a: "Yes. Play screens are completely ad-free with no commercial elements; ads only appear on adult-facing pages such as the teacher dashboard." },
+  { q: "Is the content safe for children?", a: "Yes. Marhabo currently shows no ads on any page, and play screens are entirely free of commercial elements. If ads are ever enabled, they will live only in the signed-in adult teacher area." },
   { q: "Can I edit a game after publishing?", a: "Absolutely. From your dashboard, choose the game and hit edit to change questions, images, or settings — changes save instantly on the same link." },
-  { q: "What's the difference between public and private games?", a: "Public games appear on the Explore page and in your public profile showcase for everyone to benefit from; private games are only reachable via their direct link." },
+  { q: "What's the difference between public and private games?", a: "No user-created content is publicly listed on the platform right now; every game is reached through the direct link you share with your students." },
 ];
 
 function TemplateCard({ t, idx }: { t: Tpl; idx: number }) {
@@ -284,36 +258,6 @@ function TemplateCard({ t, idx }: { t: Tpl; idx: number }) {
   );
 }
 
-function CommunityCard({ g, idx }: { g: CommunityGame; idx: number }) {
-  const { tr, lang } = useI18n();
-  const color = COLORS[idx % COLORS.length];
-  const authorName = g.profiles?.name || (lang === "ar" ? "عضو" : "member");
-  return (
-    <div className="card-pop overflow-hidden flex flex-col group hover:-translate-y-1 transition-transform">
-      <Link to="/play/$gameId" params={{ gameId: g.id }} className="block">
-        <div
-          className="aspect-video grid place-items-center text-5xl relative overflow-hidden"
-          style={g.thumbnail_url ? { backgroundImage: `url(${g.thumbnail_url})`, backgroundSize: "cover", backgroundPosition: "center" } : { background: color }}
-        >
-          {!g.thumbnail_url && <span className="text-white drop-shadow-lg">🎮</span>}
-          <span className="absolute top-2 end-2 px-2 py-0.5 rounded-full bg-black/40 text-white text-xs font-bold backdrop-blur">👁 {g.play_count}</span>
-        </div>
-      </Link>
-      <div className="p-4 flex-1 flex flex-col">
-        <Link to="/play/$gameId" params={{ gameId: g.id }}>
-          <h3 className="font-display font-extrabold text-base line-clamp-1">{g.title}</h3>
-        </Link>
-        <p className="text-xs text-muted-foreground mt-1">
-          {tr("by")}{" "}
-          <Link to="/u/$userId" params={{ userId: g.user_id }} className="font-bold hover:underline" style={{ color }}>{authorName}</Link>
-        </p>
-        {g.description && <p className="text-xs text-foreground/70 mt-2 line-clamp-2">{g.description}</p>}
-        <Link to="/play/$gameId" params={{ gameId: g.id }} className="mt-3 inline-block text-center px-3 py-1.5 rounded-full text-xs font-bold text-white" style={{ background: color }}>▶ {tr("play_now")}</Link>
-      </div>
-    </div>
-  );
-
-}
 
 function Step({ n, color, title, desc, icon }: { n: number; color: string; title: string; desc: string; icon: string }) {
   return (
