@@ -40,13 +40,8 @@ export const Route = createRootRoute({
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@600;700;800;900&family=Nunito:wght@400;700;800;900&display=swap" },
     ],
-    scripts: [
-      {
-        async: true,
-        src: "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8374144873772547",
-        crossOrigin: "anonymous",
-      },
-    ],
+    // No advertising scripts are loaded globally: children's pages and play screens must stay ad-free.
+
   }),
 
   shellComponent: RootShell,

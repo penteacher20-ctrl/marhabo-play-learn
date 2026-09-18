@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Navbar } from "@/components/Navbar";
@@ -309,10 +309,10 @@ function PlayPage() {
             <h1 className="text-sm md:text-lg font-display font-extrabold truncate">{game.title}</h1>
             {creator && (
               <p className="hidden md:block text-xs text-muted-foreground truncate">
-                بواسطة{" "}
-                <Link to="/u/$userId" params={{ userId: game.user_id }} className="font-bold text-primary hover:underline">{creator}</Link>
+                بواسطة <span className="font-bold text-primary">{creator}</span>
               </p>
             )}
+
           </div>
           <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
             <label className="hidden md:inline text-xs text-muted-foreground">المقاس:</label>

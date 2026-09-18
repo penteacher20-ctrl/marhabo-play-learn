@@ -40,23 +40,24 @@ function Privacy() {
             : "Account data (email, name, optional avatar), the game content you create, and anonymous usage stats such as play counts."}
         </p>
       </Sec>
-      <Sec h={ar ? "الإعلانات وملفات تعريف الارتباط (Google AdSense)" : "Advertising and cookies (Google AdSense)"}>
+      <Sec h={ar ? "الإعلانات وملفات تعريف الارتباط" : "Advertising and cookies"}>
         <p>
           {ar
-            ? "نستخدم Google AdSense لعرض الإعلانات في الصفحات العامة ولوحة المعلم الموجهة للبالغين فقط. لا تُعرض أي إعلانات داخل شاشة اللعب أو الواجهات الموجهة للأطفال."
-            : "We use Google AdSense to serve ads on public pages and the adult-facing teacher dashboard only. No ads are shown inside the play screen or any child-facing interface."}
+            ? "لا تعرض مِرحابو حاليًا أي إعلانات في أي صفحة من صفحات الموقع، ولا يتم تحميل أي سكربتات إعلانية."
+            : "Marhabo does not currently display any advertising on any page, and no advertising scripts are loaded."}
         </p>
         <p>
           {ar
-            ? "تستخدم جهات خارجية، بما فيها Google، ملفات تعريف الارتباط (مثل ملف DoubleClick) لعرض إعلانات بناءً على زياراتك السابقة لهذا الموقع أو لمواقع أخرى. استخدام Google لملفات تعريف الارتباط الإعلانية يمكّنه وشركاءه من عرض إعلانات مخصصة استنادًا إلى زيارتك."
-            : "Third-party vendors, including Google, use cookies (such as the DoubleClick cookie) to serve ads based on your prior visits to this or other websites. Google's use of advertising cookies enables it and its partners to serve personalized ads based on your visit."}
+            ? "إذا فُعّلت الإعلانات مستقبلًا فستكون فقط داخل مساحة المعلمين البالغين بعد تسجيل الدخول، ولن تظهر أبدًا في الصفحات العامة الموجهة للأطفال أو داخل شاشات اللعب. وسنحدّث هذه السياسة قبل تفعيلها لتوضيح مزوّد الإعلانات وملفات تعريف الارتباط المستخدمة وطرق إيقاف الإعلانات المخصصة."
+            : "If advertising is enabled in the future, it will appear only inside the signed-in adult teacher area, and never on child-facing public pages or inside play screens. We will update this policy before that happens to name the ad provider, the cookies used, and how to opt out of personalized ads."}
         </p>
         <p>
           {ar
-            ? "يمكنك إيقاف الإعلانات المخصصة في أي وقت عبر إعدادات إعلانات Google (adssettings.google.com)، أو إدارة ملفات تعريف الارتباط من إعدادات متصفحك. استمرارك في استخدام الموقع يعني موافقتك على استخدام ملفات تعريف الارتباط الضرورية لتشغيل الخدمة."
-            : "You can opt out of personalized advertising anytime via Google Ads Settings (adssettings.google.com), or manage cookies in your browser settings. Continued use of the site means you accept the cookies required to operate the service."}
+            ? "نستخدم حاليًا ملفات تعريف الارتباط الضرورية لتشغيل الخدمة فقط، مثل الحفاظ على تسجيل دخولك وتذكّر تفضيلات اللغة."
+            : "Today we use only the cookies required to operate the service, such as keeping you signed in and remembering your language preference."}
         </p>
       </Sec>
+
       <Sec h={ar ? "حقوقك" : "Your rights"}>
         <p>
           {ar
